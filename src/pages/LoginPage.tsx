@@ -43,6 +43,10 @@ const LoginPage: React.FC = () => {
 
       if (json.token) {
         localStorage.setItem('token', json.token); 
+        localStorage.setItem('user_id', json.user_id);
+        localStorage.setItem('username', json.username);
+        window.dispatchEvent(new Event('authChanged'));
+
         alert('Connexion réussie !');
         navigate('/profile');
       } else {

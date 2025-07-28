@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
+import { createAuthedSupabaseClient } from '../lib/authedClient';
+
+type JwtPayload = {
+  user_id: number;
+  [key: string]: any;
+};
 
 const ProfilePage: React.FC = () => {
-  const userName = "Luca";
+  const navigate = useNavigate();
+  const [userName, setUserName] = useState<string>('Utilisateur');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const sections = [
@@ -20,13 +29,50 @@ const ProfilePage: React.FC = () => {
     },
     {
       title: "Sécurité",
-      content: ["Authentification", "Confidentialité"]
+      content: ["Authentification", "Confidentialité", "Se déconnecter"]
     },
   ];
 
   const toggleIndex = (index: number) => {
     setActiveIndex(prev => (prev === index ? null : index));
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.dispatchEvent(new Event('authChanged'));
+    alert('👋 Déconnecté avec succès !');
+    navigate('/');
+  };
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const decoded = jwtDecode<JwtPayload>(token);
+        const userId = decoded.user_id;
+        const supabase = createAuthedSupabaseClient(token);
+
+        const { data, error } = await supabase
+          .from('users')
+          .select('username')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Erreur Supabase :', error.message);
+        } else if (data?.username) {
+          setUserName(data.username);
+        }
+      } catch (err) {
+        console.error('Erreur récupération username :', err);
+      }
+    };
+
+    fetchUsername();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#230022] via-[#230022] to-[#561447] text-white py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -50,6 +96,7 @@ const ProfilePage: React.FC = () => {
             />
           </div>
         </div>
+
         <div className="space-y-4">
           {sections.map((section, index) => (
             <div
@@ -66,7 +113,18 @@ const ProfilePage: React.FC = () => {
               {activeIndex === index && (
                 <ul className="px-6 pb-4 space-y-2 text-white/80 text-sm list-disc list-inside">
                   {section.content.map((item, idx) => (
-                    <li key={idx}>{item}</li>
+                    item === "Se déconnecter" ? (
+                      <li key={idx} className="list-none">
+                        <button
+                          onClick={handleLogout}
+                          className="text-[#C30D9B] hover:text-pink-400 font-semibold hover:underline transition-all"
+                        >
+                          🔒 {item}
+                        </button>
+                      </li>
+                    ) : (
+                      <li key={idx}>{item}</li>
+                    )
                   ))}
                 </ul>
               )}
