@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Search, User } from 'lucide-react';
 
@@ -8,6 +8,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const location = useLocation();
 
   const navigation = [
@@ -19,6 +20,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+useEffect(() => {
+  const checkLogin = () => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+  };
+
+  checkLogin(); // initial check
+
+  // écoute les changements de login/logout
+  window.addEventListener('authChanged', checkLogin);
+
+  return () => {
+    window.removeEventListener('authChanged', checkLogin);
+  };
+}, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
@@ -62,29 +79,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className="pl-10 pr-4 py-2 bg-dark-800/50 border border-dark-700 rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 w-64"
                 />
               </div>
-              <div className="relative group">
-                <Link
-                  to="/login"
-                  className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white px-4 py-2 rounded-full hover:from-primary-600 hover:to-accent-600 transition-all transform hover:scale-105"
-                >
-                  <User className="h-4 w-4" />
-                  <span>Se connecter</span>
-                </Link>
-                <div className="absolute right-0 mt-2 w-48 bg-dark-800 rounded-lg shadow-lg border border-dark-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <Link
-                    to="/profile"
-                    className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-dark-700 rounded-t-lg"
-                  >
-                    Mon Compte
-                  </Link>
-                  <Link
-                    to="/login"
-                    className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-dark-700 rounded-b-lg"
-                  >
-                    Se connecter
-                  </Link>
-                </div>
-              </div>
+
+              <Link
+                to={isLoggedIn ? '/profile' : '/login'}
+                className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white px-4 py-2 rounded-full hover:from-primary-600 hover:to-accent-600 transition-all transform hover:scale-105"
+              >
+                <User className="h-4 w-4" />
+                <span>{isLoggedIn ? 'Mon compte' : 'Se connecter'}</span>
+              </Link>
             </div>
 
             {/* Mobile menu button */}
@@ -117,6 +119,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   {item.name}
                 </Link>
               ))}
+
               <div className="px-3 py-2">
                 <input
                   type="text"
@@ -124,19 +127,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className="w-full px-3 py-2 bg-dark-800/50 border border-dark-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
+
               <Link
-                to="/profile"
+                to={isLoggedIn ? '/profile' : '/login'}
                 className="block mx-3 my-2 text-center bg-gradient-to-r from-primary-500 to-accent-500 text-white px-4 py-2 rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Mon Compte
-              </Link>
-              <Link
-                to="/login"
-                className="block mx-3 my-2 text-center bg-gradient-to-r from-primary-500 to-accent-500 text-white px-4 py-2 rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Se connecter
+                {isLoggedIn ? 'Mon compte' : 'Se connecter'}
               </Link>
             </div>
           </div>
