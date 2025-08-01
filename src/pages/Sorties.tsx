@@ -75,10 +75,27 @@ const Sorties: React.FC = () => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
-  const removeEvent = (id: number) => {
-    setSavedEvents(prev => prev.filter(event => event.id !== id));
-    // Optionnel : supprimer côté Supabase aussi ?
-  };
+  const removeEvent = async (id: number) => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  const supabase = createAuthedSupabaseClient(token);
+
+  // Supprime de la table user_activities
+  const { error } = await supabase
+    .from("user_activities")
+    .delete()
+    .eq("activity_id", id);
+
+  if (error) {
+    console.error("Erreur suppression user_activities :", error.message);
+    alert("❌ Échec de la suppression.");
+    return;
+  }
+
+  // Supprime côté affichage
+  setSavedEvents(prev => prev.filter(event => event.id !== id));
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#230022] via-[#230022] to-[#561447] text-white py-10 px-4 sm:px-6 lg:px-8">
