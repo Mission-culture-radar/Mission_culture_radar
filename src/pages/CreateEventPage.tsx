@@ -1,3 +1,4 @@
+// CreateEventPage.tsx
 import React, { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { createAuthedSupabaseClient } from '../lib/authedClient';
@@ -25,7 +26,6 @@ const CreateEventPage: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
-  // ✅ Setup Supabase client with token + fetch user role
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -53,7 +53,6 @@ const CreateEventPage: React.FC = () => {
     fetchUser();
   }, []);
 
-  // ✅ Handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -107,17 +106,31 @@ const CreateEventPage: React.FC = () => {
       if (insertError || !activity) throw insertError;
 
       const activityId = activity.id;
-
       const datetime = formData.eventDate && formData.eventTime
         ? `${formData.eventDate} ${formData.eventTime}`
         : null;
 
+      // 🔁 Convertir adresse → coordonnées
+      const fullAddress = `${formData.address}, ${formData.postalCode} ${formData.city}`;
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=geojson&q=${encodeURIComponent(fullAddress)}`);
+      const geo = await response.json();
+
+      let geoPoint = null;
+      if (geo.features && geo.features.length > 0) {
+        const [lon, lat] = geo.features[0].geometry.coordinates;
+        geoPoint = {
+          type: 'Point',
+          coordinates: [lon, lat],
+        };
+      }
+
+      // 🛰️ Envoi avec adresse en geometry
       const { error: rpcError } = await supabase.rpc('submit_activity_full', {
         _activity_id: activityId,
         _title: formData.title,
         _description: formData.description,
         _event_datetime: datetime,
-        _address: null, // ou calculer géoloc plus tard
+        _address: geoPoint,
         _tags: formData.tags,
         _mail: formData.email,
         _phone: formData.phone,
@@ -139,6 +152,23 @@ const CreateEventPage: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#230022] to-[#561447] text-white">
         Chargement...
+      </div>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#230022] to-[#561447] text-white px-4 text-center">
+        <div>
+          <h1 className="text-2xl font-bold mb-4">⛔ Accès refusé</h1>
+          <p>Vous n’avez pas les droits pour accéder à cette page.</p>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="mt-6 bg-[#C30D9B] hover:bg-pink-600 text-white font-semibold px-6 py-3 rounded-full transition-all"
+          >
+            Retour à l’accueil
+          </button>
+        </div>
       </div>
     );
   }
@@ -199,7 +229,7 @@ const CreateEventPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Uploads avec preview */}
+        {/* Uploads */}
         <div>
           <input type="file" multiple onChange={handleFileChange}
             className="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white/20 file:text-white hover:file:bg-white/30" />
@@ -210,7 +240,7 @@ const CreateEventPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bouton de soumission */}
+        {/* Bouton final */}
         <button onClick={handleSubmit}
           className="w-full bg-[#C30D9B] hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-full transition-all">
           Soumettre

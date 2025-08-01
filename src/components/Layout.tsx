@@ -1,41 +1,63 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Search, User } from 'lucide-react';
+import { jwtDecode } from 'jwt-decode';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+type JwtPayload = {
+  user_id: number;
+  role_id: number;
+  [key: string]: any;
+};
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [roleId, setRoleId] = useState<number | null>(null);
+  const [isRoleLoaded, setIsRoleLoaded] = useState(false);
   const location = useLocation();
+
+  const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    const checkLogin = () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        setIsLoggedIn(true);
+        try {
+          const decoded = jwtDecode<JwtPayload>(token);
+          setRoleId(decoded.role_id ?? null);
+        } catch (e) {
+          console.error('Erreur décodage JWT', e);
+          setRoleId(null);
+        }
+      } else {
+        setIsLoggedIn(false);
+        setRoleId(null);
+      }
+      setIsRoleLoaded(true);
+    };
+
+    checkLogin();
+    window.addEventListener('authChanged', checkLogin);
+    return () => {
+      window.removeEventListener('authChanged', checkLogin);
+    };
+  }, []);
 
   const navigation = [
     { name: 'Accueil', href: '/' },
     { name: 'Carte', href: '/map' },
-    { name: 'Espace créateur', href: '/create-event' },
+    ...(isLoggedIn && roleId !== 1 ? [{ name: 'Espace créateur', href: '/create-event' }] : []),
     { name: 'Mes sorties', href: '/sorties' },
     { name: 'Premium', href: '/premium' },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
-
-useEffect(() => {
-  const checkLogin = () => {
-    const token = localStorage.getItem('token');
-    setIsLoggedIn(!!token);
-  };
-
-  checkLogin(); // initial check
-
-  // écoute les changements de login/logout
-  window.addEventListener('authChanged', checkLogin);
-
-  return () => {
-    window.removeEventListener('authChanged', checkLogin);
-  };
-}, []);
+  // Bloque le rendu tant que le rôle n'est pas encore chargé
+  if (!isRoleLoaded) return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
