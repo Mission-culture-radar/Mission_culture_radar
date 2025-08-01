@@ -21,7 +21,7 @@ jobs:
         run: npm run build
 
       - name: Upload build to Infomaniak FTP
-        uses: SamKirkland/ftp-deploy-action@v4
+        uses: SamKirkland/ftp-deploy-action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
