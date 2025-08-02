@@ -1,7 +1,52 @@
-// CreateEventPage.tsx
 import React, { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { createAuthedSupabaseClient } from '../lib/authedClient';
+
+// Fonction de géocodage via OpenStreetMap
+async function geocodeAddress(address: string): Promise<{ type: string; coordinates: [number, number] } | null> {
+  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+  const data = await response.json();
+
+  if (data && data.length > 0) {
+    const lat = parseFloat(data[0].lat);
+    const lon = parseFloat(data[0].lon);
+    return {
+      type: "Point",
+      coordinates: [lon, lat]
+    };
+  }
+
+  return null;
+}
+
+// Fonction upload vers edge function
+async function uploadActivityMedia({
+  jwt,
+  activityId,
+  files,
+}: {
+  jwt: string;
+  activityId: number;
+  files: File[];
+}) {
+  const formData = new FormData();
+  formData.append("activity_id", activityId.toString());
+  for (const file of files) {
+    formData.append("file", file);
+  }
+
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/uploadmedia-activities`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Échec de l’upload");
+  return data.uploaded;
+}
 
 const CreateEventPage: React.FC = () => {
   const [supabase, setSupabase] = useState<any>(null);
@@ -75,18 +120,14 @@ const CreateEventPage: React.FC = () => {
     setPreviewUrls(files.map(file => URL.createObjectURL(file)));
   };
 
-  const uploadFiles = async (activityId: number) => {
-    for (const file of uploadedFiles) {
-      const fileName = `${Date.now()}_${file.name}`;
-      const { data, error } = await supabase.storage
-        .from('activity-files')
-        .upload(`activities/${fileName}`, file);
-      if (error) throw error;
-
-      await supabase.rpc('add_activity_blob', {
-        _activity_id: activityId,
-        _blob_link: data.path
-      });
+  const uploadFiles = async (activityId: number, jwt: string) => {
+    if (!uploadedFiles.length) return;
+    try {
+      const urls = await uploadActivityMedia({ jwt, activityId, files: uploadedFiles });
+      console.log("✅ Images uploadées :", urls);
+    } catch (err) {
+      console.error("Erreur upload images :", err);
+      throw err;
     }
   };
 
@@ -96,6 +137,7 @@ const CreateEventPage: React.FC = () => {
       return;
     }
 
+    const token = localStorage.getItem('token')!;
     try {
       const { data: activity, error: insertError } = await supabase
         .from('activities')
@@ -106,31 +148,24 @@ const CreateEventPage: React.FC = () => {
       if (insertError || !activity) throw insertError;
 
       const activityId = activity.id;
+
       const datetime = formData.eventDate && formData.eventTime
         ? `${formData.eventDate} ${formData.eventTime}`
         : null;
 
-      // 🔁 Convertir adresse → coordonnées
       const fullAddress = `${formData.address}, ${formData.postalCode} ${formData.city}`;
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=geojson&q=${encodeURIComponent(fullAddress)}`);
-      const geo = await response.json();
-
-      let geoPoint = null;
-      if (geo.features && geo.features.length > 0) {
-        const [lon, lat] = geo.features[0].geometry.coordinates;
-        geoPoint = {
-          type: 'Point',
-          coordinates: [lon, lat],
-        };
+      const geo = await geocodeAddress(fullAddress);
+      if (!geo) {
+        alert("❌ Adresse invalide ou introuvable.");
+        return;
       }
 
-      // 🛰️ Envoi avec adresse en geometry
       const { error: rpcError } = await supabase.rpc('submit_activity_full', {
         _activity_id: activityId,
         _title: formData.title,
         _description: formData.description,
         _event_datetime: datetime,
-        _address: geoPoint,
+        _address: geo,
         _tags: formData.tags,
         _mail: formData.email,
         _phone: formData.phone,
@@ -139,9 +174,9 @@ const CreateEventPage: React.FC = () => {
 
       if (rpcError) throw rpcError;
 
-      await uploadFiles(activityId);
+      await uploadFiles(activityId, token);
 
-      alert('✅ Événement créé et en attente de modération !');
+      alert('✅ Événement créé avec géolocalisation et images !');
     } catch (err) {
       console.error(err);
       alert('❌ Une erreur est survenue lors de la création.');
@@ -156,29 +191,11 @@ const CreateEventPage: React.FC = () => {
     );
   }
 
-  if (!authorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#230022] to-[#561447] text-white px-4 text-center">
-        <div>
-          <h1 className="text-2xl font-bold mb-4">⛔ Accès refusé</h1>
-          <p>Vous n’avez pas les droits pour accéder à cette page.</p>
-          <button
-            onClick={() => window.location.href = '/'}
-            className="mt-6 bg-[#C30D9B] hover:bg-pink-600 text-white font-semibold px-6 py-3 rounded-full transition-all"
-          >
-            Retour à l’accueil
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#230022] to-[#561447] pt-12 pb-20 px-4 text-white">
       <div className="max-w-4xl mx-auto bg-white/10 border border-white/20 rounded-2xl p-8 shadow-xl space-y-8">
         <h2 className="text-3xl font-bold text-center">Créer un événement</h2>
 
-        {/* Champs texte */}
         <input type="text" name="title" placeholder="Titre *" value={formData.title} onChange={handleInputChange}
           className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm placeholder-gray-600" />
         <textarea name="description" placeholder="Description *" value={formData.description} onChange={handleInputChange}
@@ -189,14 +206,10 @@ const CreateEventPage: React.FC = () => {
           <input type="time" name="eventTime" value={formData.eventTime} onChange={handleInputChange}
             className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
         </div>
-
-        {/* Infos contact */}
         <input type="email" name="email" placeholder="Email *" value={formData.email} onChange={handleInputChange}
           className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
         <input type="tel" name="phone" placeholder="Téléphone" value={formData.phone} onChange={handleInputChange}
           className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
-
-        {/* Adresse */}
         <div className="grid grid-cols-2 gap-4">
           <input type="text" name="address" placeholder="Adresse" value={formData.address} onChange={handleInputChange}
             className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
@@ -229,10 +242,15 @@ const CreateEventPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Uploads */}
+        {/* Upload fichiers avec preview */}
         <div>
-          <input type="file" multiple onChange={handleFileChange}
-            className="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white/20 file:text-white hover:file:bg-white/30" />
+          <input
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleFileChange}
+            className="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white/20 file:text-white hover:file:bg-white/30"
+          />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
             {previewUrls.map((url, index) => (
               <img key={index} src={url} alt={`Preview ${index}`} className="rounded-xl h-32 w-full object-cover" />
@@ -240,7 +258,7 @@ const CreateEventPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bouton final */}
+        {/* Soumettre */}
         <button onClick={handleSubmit}
           className="w-full bg-[#C30D9B] hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-full transition-all">
           Soumettre

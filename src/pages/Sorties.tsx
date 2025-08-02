@@ -156,58 +156,135 @@ const Sorties: React.FC = () => {
 
       {/* Modale d'événement */}
       {selectedEvent && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedEvent(null)}
+  <div
+    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+    onClick={() => setSelectedEvent(null)}
+  >
+    <div
+      className="bg-[#2e0033] rounded-2xl p-6 max-w-3xl w-full relative overflow-hidden"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        className="absolute top-4 right-4 text-white hover:text-[#e52d52]"
+        onClick={() => setSelectedEvent(null)}
+      >
+        <X size={28} />
+      </button>
+      <img
+        src={selectedEvent.image}
+        alt={selectedEvent.title}
+        className="w-full h-[400px] object-cover rounded-xl mb-6"
+      />
+      <h2 className="text-[36px] font-bold text-[#c30d9b] mb-4">{selectedEvent.title}</h2>
+      <div className="overflow-y-scroll max-h-[250px] pr-3 scrollbar-thin scrollbar-thumb-[#e52d52] scrollbar-track-[#230022] mb-4">
+        <p className="text-[25px] text-white/90 leading-relaxed">
+          {selectedEvent.description}
+        </p>
+        <p className="text-white/80 text-lg mt-4"><strong>Date :</strong> {selectedEvent.date}</p>
+        <p className="text-white/80 text-lg"><strong>Lieu :</strong> {selectedEvent.location}</p>
+      </div>
+
+      <div className="border-t border-[#e52d52] pt-4 mt-4 flex justify-between items-center">
+        <LikeButton activityId={selectedEvent.id} />
+        <button
+          onClick={() => setShowComments(!showComments)}
+          className="flex items-center gap-2 text-[#e52d52] hover:text-white transition"
         >
-          <div
-            className="bg-[#2e0033] rounded-2xl p-6 max-w-3xl w-full relative overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="absolute top-4 right-4 text-white hover:text-[#e52d52]"
-              onClick={() => setSelectedEvent(null)}
-            >
-              <X size={28} />
-            </button>
-            <img
-              src={selectedEvent.image}
-              alt={selectedEvent.title}
-              className="w-full h-[400px] object-cover rounded-xl mb-6"
-            />
-            <h2 className="text-[36px] font-bold text-[#c30d9b] mb-4">{selectedEvent.title}</h2>
-            <div className="overflow-y-scroll max-h-[250px] pr-3 scrollbar-thin scrollbar-thumb-[#e52d52] scrollbar-track-[#230022] mb-4">
-              <p className="text-[25px] text-white/90 leading-relaxed">
-                {selectedEvent.description}
-              </p>
-              <p className="text-white/80 text-lg mt-4"><strong>Date :</strong> {selectedEvent.date}</p>
-              <p className="text-white/80 text-lg"><strong>Lieu :</strong> {selectedEvent.location}</p>
-            </div>
-            <div className="border-t border-[#e52d52] pt-4 mt-4">
-              <div className="flex justify-between items-center">
-                <button className="flex items-center gap-2 text-[#e52d52] hover:text-white transition">
-                  <Heart className="h-5 w-5" /> J'aime
-                </button>
-                <button
-                  onClick={() => setShowComments(!showComments)}
-                  className="flex items-center gap-2 text-[#e52d52] hover:text-white transition"
-                >
-                  <MessageSquare className="h-5 w-5" /> Commenter
-                </button>
-              </div>
-              {showComments && (
-                <div className="mt-4 max-h-32 overflow-y-scroll scrollbar-thin scrollbar-thumb-[#c30d9b] scrollbar-track-[#230022] text-white/80 text-sm bg-[#230022] p-3 rounded-lg">
-                  <p className="mb-2">💬 Super événement !</p>
-                  <p className="mb-2">🔥 J’y étais l’an dernier, incroyable !</p>
-                  <p>😍 Trop hâte !</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <MessageSquare className="h-5 w-5" /> Commenter
+        </button>
+      </div>
+
+      {showComments && (
+        <div className="mt-4 max-h-32 overflow-y-scroll scrollbar-thin scrollbar-thumb-[#c30d9b] scrollbar-track-[#230022] text-white/80 text-sm bg-[#230022] p-3 rounded-lg">
+          <p className="mb-2">💬 Super événement !</p>
+          <p className="mb-2">🔥 J’y étais l’an dernier, incroyable !</p>
+          <p>😍 Trop hâte !</p>
         </div>
       )}
     </div>
+  </div>
+)}
+
+    </div>
+    
   );
 };
+const LikeButton = ({ activityId }: { activityId: number }) => {
+  const [liked, setLiked] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchLike = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const { user_id } = jwtDecode<JwtPayload>(token);
+      const supabase = createAuthedSupabaseClient(token);
+
+      const { data, error } = await supabase
+        .from('user_activities')
+        .select('activity_is_liked')
+        .eq('user_id', user_id)
+        .eq('activity_id', activityId)
+        .maybeSingle();
+
+      if (!error && data?.activity_is_liked) {
+        setLiked(true);
+      }
+
+      setLoading(false);
+    };
+
+    fetchLike();
+  }, [activityId]);
+
+const toggleLike = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
+  const { user_id } = jwtDecode<JwtPayload>(token);
+  const supabase = createAuthedSupabaseClient(token);
+
+  // Étape 1 : upsert pour créer ou mettre à jour
+const { data, error } = await supabase
+  .from('user_activities')
+  .upsert(
+    [
+      {
+        user_id,
+        activity_id: activityId,
+        activity_is_liked: !liked,
+      }
+    ],
+    { onConflict: 'user_id, activity_id' }
+  )
+  .select();
+
+  // Étape 2 : forcer un update secondaire pour déclencher les triggers (si needed)
+  if (data?.length) {
+    // 🧠 Ton schéma ne définit pas de `id` sur user_activities, donc on utilise la combinaison PK (user_id + activity_id)
+    await supabase
+      .from('user_activities')
+      .update({ last_interacted: new Date().toISOString() })
+      .eq('user_id', user_id)
+      .eq('activity_id', activityId);
+  }
+
+  // Mise à jour locale
+  setLiked(!liked);
+};
+
+  return (
+    <button
+      disabled={loading}
+      onClick={toggleLike}
+      className={`flex items-center gap-2 transition ${
+        liked ? 'text-red-500' : 'text-[#e52d52] hover:text-white'
+      }`}
+    >
+      <Heart className="h-5 w-5" fill={liked ? 'currentColor' : 'none'} />
+      {liked ? "J'aime déjà" : "J'aime"}
+    </button>
+  );
+};
 export default Sorties;

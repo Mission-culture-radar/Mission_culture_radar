@@ -87,11 +87,12 @@ const MapPage: React.FC = () => {
     setFullscreenEvent(fullscreenEvent === eventId ? null : eventId);
   };
 
-  const handleOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).id === 'overlay') {
-      setFullscreenEvent(null);
-    }
-  };
+const handleOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  if ((e.target as HTMLElement).id === 'overlay') {
+    setFullscreenEvent(null);
+    setSelectedEvent(null); // 👈 ferme la fiche
+  }
+};
 
   const handleJeSors = async (event: Activity) => {
     const { error } = await supabase
