@@ -238,27 +238,41 @@ const LikeButton = ({ activityId }: { activityId: number }) => {
     fetchLike();
   }, [activityId]);
 
-  const toggleLike = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+const toggleLike = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) return;
 
-    const { user_id } = jwtDecode<JwtPayload>(token);
-    const supabase = createAuthedSupabaseClient(token);
+  const { user_id } = jwtDecode<JwtPayload>(token);
+  const supabase = createAuthedSupabaseClient(token);
 
-    const { error } = await supabase
-      .from('user_activities')
-      .upsert({
+  // Étape 1 : upsert pour créer ou mettre à jour
+const { data, error } = await supabase
+  .from('user_activities')
+  .upsert(
+    [
+      {
         user_id,
         activity_id: activityId,
         activity_is_liked: !liked,
-      });
+      }
+    ],
+    { onConflict: 'user_id, activity_id' }
+  )
+  .select();
 
-    if (!error) {
-      setLiked(!liked);
-    } else {
-      console.error('Erreur mise à jour like :', error.message);
-    }
-  };
+  // Étape 2 : forcer un update secondaire pour déclencher les triggers (si needed)
+  if (data?.length) {
+    // 🧠 Ton schéma ne définit pas de `id` sur user_activities, donc on utilise la combinaison PK (user_id + activity_id)
+    await supabase
+      .from('user_activities')
+      .update({ last_interacted: new Date().toISOString() })
+      .eq('user_id', user_id)
+      .eq('activity_id', activityId);
+  }
+
+  // Mise à jour locale
+  setLiked(!liked);
+};
 
   return (
     <button
