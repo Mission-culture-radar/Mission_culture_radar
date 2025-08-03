@@ -22,42 +22,86 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  useEffect(() => {
-    const checkLogin = () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        setIsLoggedIn(true);
-        try {
-          const decoded = jwtDecode<JwtPayload>(token);
-          setRoleId(decoded.role_id ?? null);
-        } catch (e) {
-          console.error('Erreur décodage JWT', e);
+useEffect(() => {
+const fetchRoleId = async (userId: number, token: string) => {
+
+  try {
+    const res = await fetch(`https://ssfmhopnysidfqxdhgaa.supabase.co/rest/v1/users?id=eq.${userId}`, {
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("❌ Erreur HTTP :", res.status, errText);
+      throw new Error('Erreur lors de la récupération du rôle');
+    }
+
+    const users = await res.json();
+
+    if (users.length > 0) {
+      setRoleId(users[0].role_id ?? null);
+    } else {
+      console.warn("⚠️ Aucun utilisateur trouvé");
+      setRoleId(null);
+    }
+  } catch (e) {
+    console.error('❌ Exception JS dans fetchRoleId :', e);
+    setRoleId(null);
+  } finally {
+    setIsRoleLoaded(true);
+  }
+};
+
+  const checkLogin = () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsLoggedIn(true);
+      try {
+        const decoded = jwtDecode<JwtPayload>(token);
+        const userId = decoded.user_id;
+        if (userId) {
+          fetchRoleId(userId, token); // Appel à ton backend pour récupérer le role
+        } else {
           setRoleId(null);
+          setIsRoleLoaded(true);
         }
-      } else {
-        setIsLoggedIn(false);
+      } catch (e) {
+        console.error('Erreur décodage JWT', e);
         setRoleId(null);
+        setIsRoleLoaded(true);
       }
+    } else {
+      setIsLoggedIn(false);
+      setRoleId(null);
       setIsRoleLoaded(true);
-    };
+    }
+  };
 
-    checkLogin();
-    window.addEventListener('authChanged', checkLogin);
-    return () => {
-      window.removeEventListener('authChanged', checkLogin);
-    };
-  }, []);
-
-  const navigation = [
-    { name: 'Accueil', href: '/' },
-    { name: 'Carte', href: '/map' },
-    ...(isLoggedIn && roleId !== 1 ? [{ name: 'Espace créateur', href: '/create-event' }] : []),
-    { name: 'Mes sorties', href: '/sorties' },
-    { name: 'Premium', href: '/premium' },
-  ];
+  checkLogin();
+  window.addEventListener('authChanged', checkLogin);
+  return () => {
+    window.removeEventListener('authChanged', checkLogin);
+  };
+}, []);
 
   // Bloque le rendu tant que le rôle n'est pas encore chargé
   if (!isRoleLoaded) return null;
+
+  const navigation = [
+  { name: 'Accueil', href: '/' },
+  { name: 'Carte', href: '/map' },
+  ...(isLoggedIn
+    ? roleId === 1
+      ? [{ name: 'Demander à être créateur', href: '/become-creator' }]
+      : [{ name: 'Espace créateur', href: '/create-event' }]
+    : []),
+  { name: 'Mes sorties', href: '/sorties' },
+  { name: 'Premium', href: '/premium' },
+];
+
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">

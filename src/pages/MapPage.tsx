@@ -14,6 +14,13 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
+const userIcon = L.icon({
+  iconUrl: '../public/user.png',
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+});
+
 type Activity = {
   id: number;
   title: string;
@@ -70,9 +77,7 @@ const MapPage: React.FC = () => {
 
           return {
             ...activity,
-            image: blobs?.[0]?.blob_link
-              ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/activity-files/${blobs[0].blob_link}`
-              : '/placeholder.jpg',
+            image: blobs?.[0]?.blob_link || '/placeholder.jpg',
           };
         })
       );
@@ -130,7 +135,10 @@ const handleOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
         )}
 
         {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]}>
+          <Marker
+            position={[userLocation.lat, userLocation.lng]}
+            icon={userIcon}
+          >
             <Popup>Vous êtes ici</Popup>
           </Marker>
         )}

@@ -12,61 +12,59 @@ const Sorties: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [showComments, setShowComments] = useState(false);
 
-  useEffect(() => {
-    const fetchUserActivities = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
+useEffect(() => {
+  const fetchUserActivities = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-      const decoded = jwtDecode<JwtPayload>(token);
-      const userId = decoded.user_id;
-      const supabase = createAuthedSupabaseClient(token);
+    const decoded = jwtDecode<JwtPayload>(token);
+    const userId = decoded.user_id;
+    const supabase = createAuthedSupabaseClient(token);
 
-      const { data: userLinks, error: linkError } = await supabase
-        .from("user_activities")
-        .select("activity_id")
-        .eq("user_participates", true)
-        .eq("user_id", userId);
+    const { data: userLinks, error: linkError } = await supabase
+      .from("user_activities")
+      .select("activity_id")
+      .eq("user_participates", true)
+      .eq("user_id", userId);
 
-      if (linkError) {
-        console.error("Erreur récupération user_activities :", linkError);
-        return;
-      }
+    if (linkError) {
+      console.error("Erreur récupération user_activities :", linkError);
+      return;
+    }
 
-      const activityIds = userLinks.map((link) => link.activity_id);
+    const activityIds = userLinks.map((link) => link.activity_id);
 
-      const { data: rawActivities, error: activityError } = await supabase
-        .from("activities")
-        .select("id, title, description, event_datetime, address")
-        .in("id", activityIds)
-        .eq("status_id", 3);
+    const { data: rawActivities, error: activityError } = await supabase
+      .from("activities")
+      .select("id, title, description, event_datetime, address")
+      .in("id", activityIds)
+      .eq("status_id", 3);
 
-      if (activityError) {
-        console.error("Erreur récupération activités :", activityError);
-        return;
-      }
+    if (activityError) {
+      console.error("Erreur récupération activités :", activityError);
+      return;
+    }
 
-      const enriched = await Promise.all(
-        (rawActivities || []).map(async (activity) => {
-          const { data: blobs } = await supabase
-            .from("activity_blobs")
-            .select("blob_link")
-            .eq("activity_id", activity.id)
-            .limit(1);
+    const enriched = await Promise.all(
+      (rawActivities || []).map(async (activity) => {
+        const { data: blobs } = await supabase
+          .from("activity_blobs")
+          .select("blob_link")
+          .eq("activity_id", activity.id)
+          .limit(1);
 
-          return {
-            ...activity,
-            image: blobs?.[0]?.blob_link
-              ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/activity-files/${blobs[0].blob_link}`
-              : "/placeholder.jpg",
-            date: new Date(activity.event_datetime).toLocaleDateString(),
-            location: activity.address ? "Adresse géolocalisée" : "Lieu non précisé",
-            participants: Math.floor(Math.random() * 500) + 1 // valeur factice temporaire
-          };
-        })
-      );
+        return {
+          ...activity,
+          image: blobs?.[0]?.blob_link || "/placeholder.jpg",
+          date: new Date(activity.event_datetime).toLocaleDateString(),
+          location: activity.address ? "Adresse géolocalisée" : "Lieu non précisé",
+          participants: Math.floor(Math.random() * 500) + 1
+        };
+      })
+    );
 
-      setSavedEvents(enriched);
-    };
+    setSavedEvents(enriched);
+  };
 
     fetchUserActivities();
   }, []);

@@ -7,6 +7,7 @@ import PremiumPage from './pages/PremiumPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import Sorties from './pages/Sorties';
+import BecomeCreatorPage from './pages/become-creator';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile" element={<ProfilePage />} />
            <Route path="/sorties" element={<Sorties/>} />
+           <Route path="/become-creator" element={<BecomeCreatorPage/>} />
         </Routes>
       </Layout>
     </Router>
