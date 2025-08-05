@@ -8,43 +8,43 @@ const HomePage: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsLoggedIn(!!token);
+  const token = localStorage.getItem('token');
+  setIsLoggedIn(!!token);
 
-    if (!token) return;
-    const supabase = createAuthedSupabaseClient(token);
-    const hardcodedIds = [394, 395, 400];
+  const supabase = createAuthedSupabaseClient(token || ''); // même vide, client reste valide
 
-    const fetchEvents = async () => {
-      const { data: events } = await supabase
-        .from("activities")
-        .select("id, title, description, event_datetime, address")
-        .in("id", hardcodedIds)
-        .eq("status_id", 3);
+  const hardcodedIds = [394, 395, 400];
 
-      const enriched = await Promise.all(
-        (events || []).map(async (event) => {
-          const { data: blobs } = await supabase
-            .from("activity_blobs")
-            .select("blob_link")
-            .eq("activity_id", event.id)
-            .limit(1);
+  const fetchEvents = async () => {
+    const { data: events } = await supabase
+      .from("activities")
+      .select("id, title, description, event_datetime, address")
+      .in("id", hardcodedIds)
+      .eq("status_id", 3);
 
-          return {
-            ...event,
-            image: blobs?.[0]?.blob_link || "/placeholder.jpg",
-            date: new Date(event.event_datetime).toLocaleDateString(),
-            location: event.address ? "Adresse géolocalisée" : "Lieu non précisé",
-            participants: Math.floor(Math.random() * 1000) + 100,
-          };
-        })
-      );
+    const enriched = await Promise.all(
+      (events || []).map(async (event) => {
+        const { data: blobs } = await supabase
+          .from("activity_blobs")
+          .select("blob_link")
+          .eq("activity_id", event.id)
+          .limit(1);
 
-      setFeaturedEvents(enriched);
-    };
+        return {
+          ...event,
+          image: blobs?.[0]?.blob_link || "/placeholder.jpg",
+          date: new Date(event.event_datetime).toLocaleDateString(),
+          location: event.address ? "Adresse géolocalisée" : "Lieu non précisé",
+          participants: Math.floor(Math.random() * 1000) + 100,
+        };
+      })
+    );
 
-    fetchEvents();
-  }, []);
+    setFeaturedEvents(enriched);
+  };
+
+  fetchEvents();
+}, []);
 
   const truncateText = (text: string, maxLength: number) =>
     text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
@@ -142,26 +142,23 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Vidéo */}
+        {/* Vidéo */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Merci à tous d'avoir été aussi nombreux
           </h2>
           <p className="text-xl text-white/80 mb-8">
-            au concert de Brian Adams !
+            au concert exceptionnel de Coldplay ✨
           </p>
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-            <img
-              src="https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg"
-              alt="Concert de Brian Adams"
-              className="w-full h-64 md:h-96 object-cover"
-            />
-            <div className="absolute inset-0 bg-[#230022]/60 flex items-center justify-center">
-              <button className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-all transform hover:scale-110">
-                <Play className="h-8 w-8 text-white ml-1" />
-              </button>
-            </div>
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-video">
+            <iframe
+              className="w-full h-full"
+              src="https://www.youtube.com/embed/Fpn1imb9qZg?si=jvd12DKfm74P36TB"
+              title="Concert de Coldplay"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            ></iframe>
           </div>
         </div>
       </section>
