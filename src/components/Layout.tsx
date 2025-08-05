@@ -135,25 +135,16 @@ const fetchRoleId = async (userId: number, token: string) => {
               ))}
             </div>
 
-            {/* Search and Login */}
-            <div className="hidden md:flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Trouvez votre prochaine sortie !"
-                  className="pl-10 pr-4 py-2 bg-dark-800/50 border border-dark-700 rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 w-64"
-                />
-              </div>
-
-              <Link
-                to={isLoggedIn ? '/profile' : '/login'}
-                className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white px-4 py-2 rounded-full hover:from-primary-600 hover:to-accent-600 transition-all transform hover:scale-105"
-              >
-                <User className="h-4 w-4" />
-                <span>{isLoggedIn ? 'Mon compte' : 'Se connecter'}</span>
-              </Link>
-            </div>
+           {/* Login only */}
+<div className="hidden md:flex items-center">
+  <Link
+    to={isLoggedIn ? '/profile' : '/login'}
+    className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white px-4 py-2 rounded-full hover:from-primary-600 hover:to-accent-600 transition-all transform hover:scale-105"
+  >
+    <User className="h-4 w-4" />
+    <span>{isLoggedIn ? 'Mon compte' : 'Se connecter'}</span>
+  </Link>
+</div>
 
             {/* Mobile menu button */}
             <div className="md:hidden">
@@ -212,7 +203,7 @@ const fetchRoleId = async (userId: number, token: string) => {
       {/* Footer */}
       <footer className="bg-[#230022] border-t-[1px] border-[#561447] mt-auto text-xs py-2">
         <div className="text-center text-white/70">
-          <p>&copy; 2024 Culture Radar. Tous droits réservés.</p>
+          <p>&copy; 2025 Culture Radar. Projet Etudiant.</p>
         </div>
       </footer>
     </div>
