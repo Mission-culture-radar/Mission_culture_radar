@@ -180,17 +180,6 @@ const ProfilePage: React.FC = () => {
           Bonjour, {formData.username}
         </h1>
 
-        <div className="mb-8 mt-4">
-          <div className="relative w-full max-w-md mx-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 h-5 w-5" />
-            <input
-              type="text"
-              placeholder="Rechercher une option..."
-              className="w-full pl-10 pr-4 py-3 bg-[#3a1f40] border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C30D9B]"
-            />
-          </div>
-        </div>
-
         {isEditing && (
           <form onSubmit={handleSubmit} className="bg-[#2d1b2f] p-6 rounded-xl space-y-4 mb-8">
             <div>
