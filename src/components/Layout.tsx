@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, User } from 'lucide-react';
+import { Menu, X, User } from 'lucide-react';
 import { jwtDecode } from 'jwt-decode';
+import ReactGA from 'react-ga4';
+
+
+const GA_ID = 'G-BL32PKV7LK';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -23,8 +27,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isActive = (path: string) => location.pathname === path;
 
 useEffect(() => {
-const fetchRoleId = async (userId: number, token: string) => {
 
+ ReactGA.initialize(GA_ID);
+  ReactGA.send({ hitType: 'pageview', page: location.pathname });
+
+const fetchRoleId = async (userId: number, token: string) => {
   try {
     const res = await fetch(`https://ssfmhopnysidfqxdhgaa.supabase.co/rest/v1/users?id=eq.${userId}`, {
       headers: {
@@ -85,7 +92,7 @@ const fetchRoleId = async (userId: number, token: string) => {
   return () => {
     window.removeEventListener('authChanged', checkLogin);
   };
-}, []);
+}, [location.pathname]);
 
   // Bloque le rendu tant que le rôle n'est pas encore chargé
   if (!isRoleLoaded) return null;
