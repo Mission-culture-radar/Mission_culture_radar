@@ -131,6 +131,50 @@ const CreateEventPage: React.FC = () => {
     }
   };
 
+
+  async function moderateActivity(
+    activityId: number,
+    jwt: string
+  ): Promise<{
+    success: boolean;
+    new_status_id?: number;
+    verdict?: string;
+    justification?: string;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-activity`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ activity_id: activityId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data.error || "Erreur inattendue",
+        };
+      }
+
+      return {
+        success: true,
+        new_status_id: data.new_status_id,
+        verdict: data.verdict,
+        justification: data.justification,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || "Erreur réseau ou serveur",
+      };
+    }
+  }
+
   const handleSubmit = async () => {
     if (!authorized || !userId || !supabase) {
       alert("❌ Vous n’avez pas la permission de créer un événement.");
@@ -176,12 +220,29 @@ const CreateEventPage: React.FC = () => {
 
       await uploadFiles(activityId, token);
 
-      alert('✅ Événement créé avec géolocalisation et images !');
+      const moderation = await moderateActivity(activityId, token);
+
+      if (moderation.success) {
+        const verdict = moderation.verdict?.toLowerCase();
+        if (verdict === "yes") {
+          alert("✅ Événement validé automatiquement !");
+        } else if (verdict === "maybe") {
+          alert(`🟡 Votre événement est en attente de validation manuelle.\n\n💬 Raison : ${moderation.justification}`);
+        } else if (verdict === "no") {
+          alert(`❌ Votre événement n’a pas été approuvé.\n\n💬 Raison : ${moderation.justification}\n\n`);
+        } else {
+          alert("⚠️ Résultat de modération inattendu. Un modérateur vérifiera manuellement.");
+        }
+      } else {
+        alert("✅ Événement créé, mais la modération automatique a échoué. Il sera vérifié manuellement.");
+      }
+
     } catch (err) {
       console.error(err);
       alert('❌ Une erreur est survenue lors de la création.');
     }
   };
+
 
   if (isLoading) {
     return (
