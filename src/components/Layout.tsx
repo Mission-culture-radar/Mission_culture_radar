@@ -123,21 +123,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
       <nav className="sticky top-0 z-50 w-full bg-[#230022] backdrop-blur-md border-b border-[#561447]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="transform transition-transform duration-200 active:scale-90">
-              <img
-                src="/logo_final_fond_noir.png"
-                alt="Logo CultureRadar"
-                className="h-10 sm:h-12 lg:h-14 transition-transform duration-300 hover:scale-105"
-              />
-            </Link>
+          <div className="flex justify-between items-center h-16 w-full">
+            {/* Logo */}
+            <div className="flex-shrink-0">
+              <Link to="/" className="transform transition-transform duration-200 active:scale-90">
+                <img
+                  src="/logo_final_fond_noir.png"
+                  alt="Logo CultureRadar"
+                  className="h-10 sm:h-12 lg:h-14 transition-transform duration-300 hover:scale-105"
+                />
+              </Link>
+            </div>
 
-            <div className="hidden md:flex items-center space-x-8">
+            {/* Nav Links + PFP */}
+            <div className="hidden md:flex items-center space-x-12 mx-auto">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 text-base font-medium transition-colors ${
                     isActive(item.href)
                       ? 'text-primary-400 border-b-2 border-primary-400'
                       : 'text-gray-300 hover:text-primary-300'
@@ -146,27 +150,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   {item.name}
                 </Link>
               ))}
-            </div>
 
-            {/* Login button w/ profile pic */}
-            <div className="hidden md:flex items-center">
               <Link
                 to={isLoggedIn ? '/profile' : '/login'}
-                className="flex items-center space-x-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white px-4 py-2 rounded-full hover:from-primary-600 hover:to-accent-600 transition-all transform hover:scale-105"
+                className="group relative flex items-center justify-center h-10 w-10 rounded-full overflow-hidden bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 transform transition-all hover:scale-110 border border-white/20 shadow-md"
               >
                 {profilePicUrl ? (
                   <img
                     src={profilePicUrl}
                     alt="Mon compte"
-                    className="h-7 w-7 rounded-full object-cover border border-white/30"
+                    onError={() => setProfilePicUrl(null)}
+                    className="h-full w-full object-cover rounded-full"
                   />
                 ) : (
-                  <User className="h-4 w-4" />
+                  <User className="h-5 w-5 text-white" />
                 )}
-                <span>{isLoggedIn ? 'Mon compte' : 'Se connecter'}</span>
               </Link>
             </div>
 
+            {/* Mobile menu toggle */}
             <div className="md:hidden">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
