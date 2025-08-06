@@ -155,16 +155,16 @@ const MapPage: React.FC = () => {
   };
 
 return (
-  <div className="relative h-screen w-screen">
+  <div className="relative h-screen w-full">
     {/* Barre de recherche + tags (en ligne, haut gauche, sans fond) */}
- <div className="absolute top-4 left-16 z-40 flex items-start gap-3 pr-4">
+ <div className="absolute top-4 left-4 right-4 sm:left-16 z-40 flex flex-wrap items-start gap-3 pr-4">
   {/* Barre de recherche bien visible */}
   <input
     type="text"
     placeholder="Recherche..."
     value={searchTerm}
     onChange={(e) => setSearchTerm(e.target.value)}
-    className="px-4 py-2 rounded-full border border-[#C30D9B] bg-[#EFEFEF] text-white placeholder-black text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-white w-[180px] sm:w-[240px]"
+    className="px-4 py-2 rounded-full border border-[#C30D9B] bg-[#EFEFEF] text-black placeholder-black text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-white w-[180px] sm:w-[240px]"
   />
 
 {/* Tags colorés + bouton "+" */}
@@ -258,7 +258,7 @@ return (
       </MapContainer>
 
       {weather && (
-        <div className="absolute top-4 right-4 z-30 bg-[#230022] rounded-xl shadow-lg px-4 py-3 w-60">
+        <div className="absolute top-4 right-4 z-30 bg-[#230022] rounded-xl shadow-lg px-4 py-3 w-52 sm:w-60">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-white">Météo actuelle</h3>
             <CloudSun className="text-yellow-300" />
@@ -269,16 +269,16 @@ return (
       )}
 
       {selectedEvent && (
-        <div
+       <div
           id="overlay"
-          className={`absolute top-0 left-0 z-40 h-screen w-screen ${fullscreenEvent ? 'bg-black/60' : ''}`}
+          className={`fixed inset-0 z-40 ${fullscreenEvent ? 'bg-black/60' : ''} overflow-y-auto`}
           onClick={handleOutsideClick}
         >
           <div
             className={`absolute ${
               fullscreenEvent
                 ? 'top-10 left-1/2 transform -translate-x-1/2 w-[90%] h-[80%]'
-                : 'top-[100px] left-4 w-[360px]'
+                : 'top-[100px] left-4 right-4 max-w-sm mx-auto'
             } z-50 bg-[#230022] rounded-xl p-4 shadow-xl transition-all duration-300 overflow-hidden`}
           >
             {activities

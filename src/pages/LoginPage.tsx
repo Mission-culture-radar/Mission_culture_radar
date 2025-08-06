@@ -23,6 +23,11 @@ const LoginPage: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+function isPasswordValid(password: string): boolean {
+  const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+  return regex.test(password);
+}
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -55,37 +60,50 @@ const LoginPage: React.FC = () => {
       }
 
     } else {
-      // Étape 1 : SIGNUP
-      const res = await fetch(API_URL, {
-        method: 'POST',
-          headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` 
-            },
-        body: JSON.stringify({
-          action: 'signup',
-          email: formData.email.toLowerCase(),
-          password: formData.password,
-          username: formData.name,
-          gender_id: 0
-        }),
-      });
+  // Étape 1 : SIGNUP
 
-      const json = await res.json();
-      console.log(json);
+  // Vérifie que le mot de passe est valide
+  if (!isPasswordValid(formData.password)) {
+    alert("❌ Le mot de passe doit contenir au moins 8 caractères, une majuscule et un chiffre.");
+    return;
+  }
 
-      if (json.message === 'Verification code sent.' || json.code) {
-        setTempUserData({
-          email: formData.email.toLowerCase(),
-          password: formData.password,
-          username: formData.name,
-        });
-        setStep('verify');
-      } else {
-        alert('Erreur lors de la création du compte');
-        console.error(json);
-      }
-    }
+  // Vérifie que les deux mots de passe correspondent
+  if (formData.password !== formData.confirmPassword) {
+    alert("❌ Les mots de passe ne correspondent pas.");
+    return;
+  }
+
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` 
+    },
+    body: JSON.stringify({
+      action: 'signup',
+      email: formData.email.toLowerCase(),
+      password: formData.password,
+      username: formData.name,
+      gender_id: 0
+    }),
+  });
+
+  const json = await res.json();
+  console.log(json);
+
+  if (json.message === 'Verification code sent.' || json.code) {
+    setTempUserData({
+      email: formData.email.toLowerCase(),
+      password: formData.password,
+      username: formData.name,
+    });
+    setStep('verify');
+  } else {
+    alert('Erreur lors de la création du compte');
+    console.error(json);
+  }
+}
   };
 
   const handleVerifyCode = async () => {
@@ -206,8 +224,16 @@ const LoginPage: React.FC = () => {
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
+                    {!isLogin && (
+                    <p className={`mt-1 text-sm ${formData.password && !isPasswordValid(formData.password) ? 'text-red-400' : 'text-green-400'}`}>
+                      {formData.password.length === 0
+                        ? ''
+                        : isPasswordValid(formData.password)
+                        ? '✅ Mot de passe sécurisé'
+                        : '❌ 8 caractères, 1 majuscule, 1 chiffre'}
+                    </p>
+                  )}
                 </div>
-
                 {!isLogin && (
                   <div>
                     <label className="block text-sm font-medium mb-2">Confirmer le mot de passe</label>
