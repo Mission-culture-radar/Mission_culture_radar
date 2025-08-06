@@ -31,7 +31,7 @@ const PremiumPage: React.FC = () => {
             Annulable à tout moment.
           </p>
 
-          <button className="bg-[#C30D9B] text-white font-semibold px-8 py-3 rounded-full transition-all transform hover:scale-105 shadow-lg">
+          <button onClick={() => navigate('/warning')} className="bg-[#C30D9B] text-white font-semibold px-8 py-3 rounded-full transition-all transform hover:scale-105 shadow-lg">
             Passez à CulturePlus !
           </button>
         </div>

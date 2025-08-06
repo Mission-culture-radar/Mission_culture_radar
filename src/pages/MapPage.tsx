@@ -4,8 +4,12 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Calendar, CloudSun, Star } from 'lucide-react';
 import { createAuthedSupabaseClient } from '../lib/authedClient';
+import markerGreen from '../assets/marker-icon-2x-green.png';
+import markerRed from '../assets/marker-icon-2x-red.png';
+import markerShadow from '../assets/marker-shadow.png';
 import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
 import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png';
+
 import userIconUrl from '../assets/user.png';
 
 // Icône par défaut Leaflet
@@ -14,6 +18,22 @@ const DefaultIcon = L.icon({
   shadowUrl: markerShadowUrl,
 });
 L.Marker.prototype.options.icon = DefaultIcon;
+
+const greenIcon = L.icon({
+  iconUrl: markerGreen,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
+const redIcon = L.icon({
+  iconUrl: markerRed,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
 
 // Icône utilisateur custom
 const userIcon = L.icon({
@@ -94,6 +114,7 @@ const MapPage: React.FC = () => {
             80: 'Averses légères', 81: 'Averses modérées', 82: 'Averses fortes'
           };
           setWeather({ temp, description: descriptions[code] || 'Inconnu' });
+          console.log("🌡️ Température détectée :", temp, "-", descriptions[code]);
         });
     });
   }, []);
@@ -153,6 +174,27 @@ const MapPage: React.FC = () => {
       alert("✅ Sortie ajoutée à votre profil !");
     }
   };
+
+const isBadWeather = (weather: { temp: number; description: string } | null) => {
+  if (!weather) return false;
+
+  const desc = weather.description.toLowerCase();
+  const temp = weather.temp;
+
+  const isRainy =
+    desc.includes("pluie") || desc.includes("averses") || desc.includes("brouillard") || desc.includes("orage");
+  const isTooCold = temp < 10;
+  const isTooHot = temp > 30;
+
+  return isRainy || isTooCold || isTooHot;
+};
+
+const isOutdoorEvent = (title: string, description: string) => {
+  const keywords = ["extérieur", "exterieur", "outdoor", "plein air"];
+  const combinedText = `${title} ${description}`.toLowerCase();
+
+  return keywords.some((kw) => combinedText.includes(kw));
+};
 
 return (
   <div className="relative h-screen w-full">
@@ -239,12 +281,18 @@ return (
   .map((event) =>
           event.address?.coordinates ? (
             <Marker
-              key={`s_${event.id}`}
-              position={[event.address.coordinates[1], event.address.coordinates[0]]}
-              eventHandlers={{ click: () => setSelectedEvent(event.id) }}
-            >
-              <Popup>{event.title}</Popup>
-            </Marker>
+  key={`s_${event.id}`}
+  position={[event.address.coordinates[1], event.address.coordinates[0]]}
+  icon={
+  isOutdoorEvent(event.title, event.description) && isBadWeather(weather)
+    ? redIcon
+    : greenIcon
+}
+  eventHandlers={{ click: () => setSelectedEvent(event.id) }}
+>
+  <Popup>{event.title}</Popup>
+</Marker>
+
           ) : null
         )}
 
@@ -303,6 +351,11 @@ return (
                   </div>
                   <div className="flex-1 overflow-y-auto pr-1 space-y-3">
                     <p className="text-sm text-gray-200">{event.description}</p>
+                    {isOutdoorEvent(event.title, event.description) && isBadWeather(weather) && (
+                      <div className="mt-2 p-2 bg-red-700 text-white rounded text-sm text-center">
+                        ⚠️ Événement extérieur & météo défavorable
+                      </div>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

@@ -171,11 +171,11 @@ useEffect(() => {
       <img
         src={selectedEvent.image}
         alt={selectedEvent.title}
-        className="w-full h-[400px] object-cover rounded-xl mb-6"
+        className="w-full h-[250px] object-cover rounded-xl mb-4"
       />
-      <h2 className="text-[36px] font-bold text-[#c30d9b] mb-4">{selectedEvent.title}</h2>
+      <h2 className="text-2xl font-bold text-[#c30d9b] mb-2">{selectedEvent.title}</h2>
       <div className="overflow-y-scroll max-h-[250px] pr-3 scrollbar-thin scrollbar-thumb-[#e52d52] scrollbar-track-[#230022] mb-4">
-        <p className="text-[25px] text-white/90 leading-relaxed">
+        <p className="text-base text-white/90 leading-relaxed">
           {selectedEvent.description}
         </p>
         <p className="text-white/80 text-lg mt-4"><strong>Date :</strong> {selectedEvent.date}</p>
