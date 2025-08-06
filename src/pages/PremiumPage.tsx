@@ -1,11 +1,12 @@
 import React from 'react';
 import { Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const PremiumPage: React.FC = () => {
+   const navigate = useNavigate();
   const advantages = [
     'Accès à des concerts exclusifs',
     'Visites guidées privées de musées',
-    'Contenu culturel sans publicité',
     'Téléchargements pour consultation hors ligne',
     'Événements collaboratifs en temps réel',
     'Support prioritaire pour les membres',
@@ -118,7 +119,10 @@ const PremiumPage: React.FC = () => {
 
         {/* CTA Button */}
         <div className="text-center">
-          <button className="bg-[#C30D9B] text-white font-semibold px-12 py-4 rounded-full transition-all transform hover:scale-105 shadow-lg text-lg">
+          <button
+            onClick={() => navigate('/warning')}
+            className="bg-[#C30D9B] text-white font-semibold px-12 py-4 rounded-full transition-all transform hover:scale-105 shadow-lg text-lg"
+          >
             Essayer Gratuitement pour 0€
           </button>
         </div>

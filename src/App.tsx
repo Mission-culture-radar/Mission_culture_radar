@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import Sorties from './pages/Sorties';
 import BecomeCreatorPage from './pages/become-creator';
+import WarningPage from './pages/warning';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
            <Route path="/sorties" element={<Sorties/>} />
            <Route path="/become-creator" element={<BecomeCreatorPage/>} />
+           <Route path="/warning" element={<WarningPage/>} />
         </Routes>
       </Layout>
     </Router>
