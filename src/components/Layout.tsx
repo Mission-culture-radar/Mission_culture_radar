@@ -113,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ...(isLoggedIn
       ? roleId === 1
         ? [{ name: 'Demander à être créateur', href: '/become-creator' }]
-        : [{ name: 'Espace créateur', href: '/create-event' }]
+        : [{ name: 'Espace créateur', href: '/creator' }]
       : []),
     { name: 'Mes sorties', href: '/sorties' },
     { name: 'Premium', href: '/premium' },

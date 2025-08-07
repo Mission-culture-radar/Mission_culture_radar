@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import MapPage from './pages/MapPage';
+import CreatorPage from './pages/CreatorPage';
 import CreateEventPage from './pages/CreateEventPage';
 import PremiumPage from './pages/PremiumPage';
 import LoginPage from './pages/LoginPage';
@@ -17,6 +18,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/map" element={<MapPage />} />
+          <Route path="/creator" element={<CreatorPage />} />
           <Route path="/create-event" element={<CreateEventPage />} />
           <Route path="/premium" element={<PremiumPage />} />
           <Route path="/login" element={<LoginPage />} />
