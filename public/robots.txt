@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /activity/
+Disallow: /create-event
+Disallow: /profile
+Disallow: /sorties
+Disallow: /become-creator
+Disallow: /warning
+Disallow: /login
+Disallow: /creator
+
+Allow: /
+
+Sitemap: https://cultureradar.fr/sitemap.xml
