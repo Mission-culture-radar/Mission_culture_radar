@@ -51,17 +51,38 @@ const ActivityEditPage: React.FC = () => {
 
       const imageUrl = blobs?.[0]?.blob_link || '/placeholder.jpg';
 
-      const [date, time] = data.event_datetime?.split('T') ?? ['', ''];
-      setOriginalData({ ...data, image_url: imageUrl });
+      // derive date/time nicely
+      let date = '';
+      let time = '';
+      if (data.event_datetime) {
+        const dt = new Date(data.event_datetime);
+        if (!isNaN(dt.getTime())) {
+          // format yyyy-mm-dd and HH:MM
+          date = dt.toISOString().slice(0, 10);
+          time = dt.toTimeString().slice(0, 5);
+        } else {
+          // fallback on raw split if needed
+          const [d, t] = String(data.event_datetime).split('T') ?? ['', ''];
+          date = d || '';
+          time = (t || '').slice(0, 5);
+        }
+      }
+
+      setOriginalData({
+        ...data,
+        image_url: imageUrl,
+        address_geom: data.address // keep original geometry
+      });
+
       setFormData({
         title: data.title,
         description: data.description,
         email: data.mail,
         phone: data.phone,
         website: data.website,
-        address: '',
+        address: '', // left blank unless user edits
         eventDate: date,
-        eventTime: time?.slice(0, 5)
+        eventTime: time
       });
 
       setLoading(false);
@@ -73,14 +94,12 @@ const ActivityEditPage: React.FC = () => {
   const toggleField = (field: string) => {
     setEditableFields(prev => {
       const next = { ...prev, [field]: !prev[field] };
-
       if (!next[field] && originalData) {
-        setFormData((prevForm: any) => ({
+        setFormData(prevForm => ({
           ...prevForm,
           [field]: originalDataMapper(field, originalData)
         }));
       }
-
       return next;
     });
   };
@@ -100,7 +119,7 @@ const ActivityEditPage: React.FC = () => {
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: any) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -111,65 +130,146 @@ const ActivityEditPage: React.FC = () => {
     }
   };
 
+  async function geocodeAddress(address: string): Promise<{ type: string; coordinates: [number, number] } | null> {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+    const data = await response.json();
+    if (data && data.length > 0) {
+      const lat = parseFloat(data[0].lat);
+      const lon = parseFloat(data[0].lon);
+      return { type: "Point", coordinates: [lon, lat] };
+    }
+    return null;
+  }
+
+  // 🔎 same moderation helper as CreateEventPage
+  async function moderateActivity(
+    activityId: number,
+    jwt: string
+  ): Promise<{
+    success: boolean;
+    new_status_id?: number;
+    verdict?: string;
+    justification?: string;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-activity`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ activity_id: activityId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data.error || "Erreur inattendue",
+        };
+      }
+
+      return {
+        success: true,
+        new_status_id: data.new_status_id,
+        verdict: data.verdict,
+        justification: data.justification,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || "Erreur réseau ou serveur",
+      };
+    }
+  }
+
   const handleSubmit = async () => {
     if (!supabase || !id) return;
 
     const token = localStorage.getItem('token')!;
-    const datetime = formData.eventDate && formData.eventTime
-      ? `${formData.eventDate} ${formData.eventTime}`
-      : null;
+    const datetime =
+      formData.eventDate && formData.eventTime
+        ? `${formData.eventDate} ${formData.eventTime}`
+        : null;
 
-    let geo = null;
+    // compute address to send (reuse original unless the toggle is enabled)
+    let addressToSend = originalData?.address_geom ?? null;
     if (editableFields.address) {
-      geo = await geocodeAddress(formData.address);
-      if (!geo) {
-        alert('❌ Adresse invalide');
+      const geo = await geocodeAddress(formData.address);
+      if (!geo) { alert('❌ Adresse invalide'); return; }
+      addressToSend = geo;
+    }
+
+    const payload = {
+      _activity_id: Number(id),
+      _title: formData.title ?? null,
+      _description: formData.description ?? null,
+      _event_datetime: datetime ?? null,
+      _address: addressToSend,
+      _tags: [],               // unchanged here
+      _mail: formData.email ?? null,
+      _phone: formData.phone ?? null,
+      _website: formData.website ?? null
+    };
+
+    try {
+      const { error } = await supabase.rpc('submit_activity_full', payload);
+      if (error) {
+        console.error(error);
+        alert('❌ Échec de la mise à jour');
         return;
       }
-    }
 
-    const { error } = await supabase.rpc('submit_activity_full', {
-      _activity_id: Number(id),
-      _title: formData.title,
-      _description: formData.description,
-      _event_datetime: datetime,
-      _address: geo,
-      _tags: [],
-      _mail: formData.email,
-      _phone: formData.phone,
-      _website: formData.website
-    });
+      // optional image upload
+      if (editableFields.image && newImageFile) {
+        try {
+          const formDataImg = new FormData();
+          formDataImg.append('activity_id', id.toString());
+          formDataImg.append('file', newImageFile);
 
-    if (error) {
-      console.error(error);
-      alert('❌ Échec de la mise à jour');
-      return;
-    }
+          const uploadRes = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/uploadmedia-activities`,
+            { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formDataImg }
+          );
 
-    if (editableFields.image && newImageFile) {
-      try {
-        const formDataImg = new FormData();
-        formDataImg.append('activity_id', id.toString());
-        formDataImg.append('file', newImageFile);
-
-        const uploadRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/uploadmedia-activities`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: formDataImg
-        });
-
-        if (!uploadRes.ok) {
-          console.error(await uploadRes.text());
-          alert('⚠️ L’événement a été mis à jour, mais l’image n’a pas pu être remplacée.');
+          if (!uploadRes.ok) {
+            console.error(await uploadRes.text());
+            alert('⚠️ L’événement a été mis à jour, mais l’image n’a pas pu être remplacée.');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('⚠️ L’événement a été mis à jour, mais une erreur est survenue sur l’image.');
         }
-      } catch (err) {
-        console.error(err);
-        alert('⚠️ L’événement a été mis à jour, mais une erreur est survenue sur l’image.');
       }
-    }
 
-    alert('✅ Événement mis à jour !');
-    navigate(`/activity/${id}`);
+      // 🧠 call moderation AFTER successful update (+ optional image)
+      const moderation = await moderateActivity(Number(id), token);
+
+      if (moderation.success) {
+        const verdict = moderation.verdict?.toLowerCase();
+        if (verdict === "yes") {
+          alert("✅ Modération OK : l’événement reste publié !");
+          navigate(`/activity/${id}`);
+        } else if (verdict === "maybe") {
+          alert(`🟡 Modération : en attente d’une validation manuelle.\n\n💬 Raison : ${moderation.justification}`);
+          navigate(`/activity/${id}`);
+        } else if (verdict === "no") {
+          alert(`❌ Modération : l’événement a été refusé.\n\n💬 Raison : ${moderation.justification}`);
+          navigate(`/activity/${id}`);
+        } else {
+          alert("⚠️ Résultat de modération inattendu. Un modérateur vérifiera manuellement.");
+          navigate(`/activity/${id}`);
+        }
+      } else {
+        alert("✅ Événement mis à jour, mais la modération automatique a échoué. Il sera revérifié manuellement.");
+        navigate(`/activity/${id}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('❌ Une erreur est survenue lors de la mise à jour.');
+    }
   };
 
   if (loading || !originalData) return <div className="text-white p-10">Chargement...</div>;
@@ -252,14 +352,3 @@ const FieldBlock = ({ label, field, editable, value, onChange, toggle, textarea 
     )}
   </div>
 );
-
-async function geocodeAddress(address: string): Promise<{ type: string; coordinates: [number, number] } | null> {
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
-  const data = await response.json();
-  if (data && data.length > 0) {
-    const lat = parseFloat(data[0].lat);
-    const lon = parseFloat(data[0].lon);
-    return { type: "Point", coordinates: [lon, lat] };
-  }
-  return null;
-}

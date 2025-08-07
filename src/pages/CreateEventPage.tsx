@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { createAuthedSupabaseClient } from '../lib/authedClient';
+import { useNavigate } from 'react-router-dom';
 
 // Fonction de géocodage via OpenStreetMap
 async function geocodeAddress(address: string): Promise<{ type: string; coordinates: [number, number] } | null> {
@@ -174,7 +175,8 @@ const CreateEventPage: React.FC = () => {
       };
     }
   }
-
+  
+  const navigate = useNavigate();
   const handleSubmit = async () => {
     if (!authorized || !userId || !supabase) {
       alert("❌ Vous n’avez pas la permission de créer un événement.");
@@ -226,15 +228,21 @@ const CreateEventPage: React.FC = () => {
         const verdict = moderation.verdict?.toLowerCase();
         if (verdict === "yes") {
           alert("✅ Événement validé automatiquement !");
+          navigate("/creator");
         } else if (verdict === "maybe") {
           alert(`🟡 Votre événement est en attente de validation manuelle.\n\n💬 Raison : ${moderation.justification}`);
+          navigate("/creator");
         } else if (verdict === "no") {
           alert(`❌ Votre événement n’a pas été approuvé.\n\n💬 Raison : ${moderation.justification}\n\n`);
+          navigate("/creator");
         } else {
           alert("⚠️ Résultat de modération inattendu. Un modérateur vérifiera manuellement.");
+          navigate("/creator");
         }
+
       } else {
         alert("✅ Événement créé, mais la modération automatique a échoué. Il sera vérifié manuellement.");
+        navigate("/creator");
       }
 
     } catch (err) {
