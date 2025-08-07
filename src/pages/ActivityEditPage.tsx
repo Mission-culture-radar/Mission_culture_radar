@@ -43,15 +43,23 @@ const ActivityEditPage: React.FC = () => {
         return;
       }
 
+      const { data: blobs } = await client
+        .from('activity_blobs')
+        .select('blob_link')
+        .eq('activity_id', id)
+        .limit(1);
+
+      const imageUrl = blobs?.[0]?.blob_link || '/placeholder.jpg';
+
       const [date, time] = data.event_datetime?.split('T') ?? ['', ''];
-      setOriginalData(data);
+      setOriginalData({ ...data, image_url: imageUrl });
       setFormData({
         title: data.title,
         description: data.description,
         email: data.mail,
         phone: data.phone,
         website: data.website,
-        address: '', // not shown unless editable
+        address: '',
         eventDate: date,
         eventTime: time?.slice(0, 5)
       });
@@ -84,7 +92,7 @@ const ActivityEditPage: React.FC = () => {
       case 'website': return data.website;
       case 'title': return data.title;
       case 'description': return data.description;
-      case 'address': return ''; // never shown when locked
+      case 'address': return '';
       case 'datetime': return (data.event_datetime || '').split('T');
       default: return '';
     }
@@ -126,7 +134,7 @@ const ActivityEditPage: React.FC = () => {
       _description: formData.description,
       _event_datetime: datetime,
       _address: geo,
-      _tags: [], // not editable here
+      _tags: [],
       _mail: formData.email,
       _phone: formData.phone,
       _website: formData.website
@@ -146,9 +154,7 @@ const ActivityEditPage: React.FC = () => {
 
         const uploadRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/uploadmedia-activities`, {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
           body: formDataImg
         });
 
@@ -178,7 +184,6 @@ const ActivityEditPage: React.FC = () => {
       <FieldBlock label="Téléphone" field="phone" editable={editableFields.phone} value={formData.phone} onChange={handleChange} toggle={() => toggleField('phone')} />
       <FieldBlock label="Site web" field="website" editable={editableFields.website} value={formData.website} onChange={handleChange} toggle={() => toggleField('website')} />
 
-      {/* DateTime */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <label className="font-semibold">Date & Heure</label>
@@ -194,7 +199,6 @@ const ActivityEditPage: React.FC = () => {
         )}
       </div>
 
-      {/* Address */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <label className="font-semibold">Adresse</label>
@@ -205,7 +209,6 @@ const ActivityEditPage: React.FC = () => {
         )}
       </div>
 
-      {/* Image Upload */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <label className="font-semibold">Image</label>
@@ -230,7 +233,6 @@ const ActivityEditPage: React.FC = () => {
 
 export default ActivityEditPage;
 
-// 🔹 Reusable field block
 const FieldBlock = ({ label, field, editable, value, onChange, toggle, textarea = false }: any) => (
   <div className="space-y-2">
     <div className="flex justify-between items-center">
@@ -249,7 +251,6 @@ const FieldBlock = ({ label, field, editable, value, onChange, toggle, textarea 
   </div>
 );
 
-// 🔹 Geocode
 async function geocodeAddress(address: string): Promise<{ type: string; coordinates: [number, number] } | null> {
   const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
   const data = await response.json();
