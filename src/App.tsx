@@ -10,6 +10,8 @@ import ProfilePage from './pages/ProfilePage';
 import Sorties from './pages/Sorties';
 import BecomeCreatorPage from './pages/become-creator';
 import WarningPage from './pages/warning';
+import ActivityDetailPage from './pages/ActivityDetailPage';
+import ActivityEditPage from './pages/ActivityEditPage';
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/creator" element={<CreatorPage />} />
           <Route path="/create-event" element={<CreateEventPage />} />
+          <Route path="/activity/:id" element={<ActivityDetailPage />} />
+          <Route path="/activity/:id/edit" element={<ActivityEditPage />} /> 
           <Route path="/premium" element={<PremiumPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile" element={<ProfilePage />} />
