@@ -41,7 +41,19 @@ const ActivityDetailPage: React.FC = () => {
 
       const image = blobs?.[0]?.blob_link || '/placeholder.jpg';
 
-      setActivity({ ...activityData, image });
+      // 🔹 Fetch tags from activity_tags
+      const { data: tagData, error: tagError } = await client
+        .from('activity_tags')
+        .select('tags(name)')
+        .eq('activity_id', id);
+
+      if (tagError) {
+        console.error('Erreur chargement tags:', tagError);
+      }
+
+      const tags = tagData?.map((row: any) => row.tags?.name).filter(Boolean) || [];
+
+      setActivity({ ...activityData, image, tags });
 
       // 🔹 Fetch participant count
       const { count: participants } = await client
@@ -79,16 +91,34 @@ const ActivityDetailPage: React.FC = () => {
         {/* 🖼️ Image + Description side-by-side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
           {/* Image */}
-          <img
-            src={activity.image}
-            alt={activity.title}
-            className="rounded-lg w-full h-auto object-cover border border-[#C30D9B]"
-          />
+          <div>
+            <img
+              src={activity.image}
+              alt={activity.title}
+              className="rounded-lg w-full h-auto object-cover border border-[#C30D9B]"
+            />
+
+            {/* Tags */}
+            {activity.tags && activity.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {activity.tags.map((tag: string, index: number) => (
+                  <span
+                    key={index}
+                    className="bg-[#C30D9B]/20 text-[#C30D9B] border border-[#C30D9B] px-3 py-1 rounded-full text-sm font-medium"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Text */}
           <div>
             <h1 className="text-4xl font-bold mb-4">{activity.title}</h1>
-            <p className="text-white/80 text-lg mb-6">{activity.description}</p>
+            <div className="text-white/80 text-lg mb-6 mt-[4.5rem] max-h-[23rem] overflow-y-auto p-4 rounded-lg border border-[#C30D9B] bg-white/10 scrollbar-thin scrollbar-thumb-[#C30D9B]/60 scrollbar-track-transparent">
+              {activity.description}
+            </div>
 
             <div className="flex gap-8 text-xl">
               <div>

@@ -175,58 +175,60 @@ const ActivityEditPage: React.FC = () => {
   if (loading || !originalData) return <div className="text-white p-10">Chargement...</div>;
 
   return (
-    <div className="text-white p-10 max-w-3xl mx-auto space-y-8">
-      <h1 className="text-3xl font-bold">Modifier l’événement</h1>
+    <div className="min-h-screen bg-gradient-to-b from-[#230022] via-[#230022] to-[#561447] text-white">
+      <div className="p-10 max-w-3xl mx-auto space-y-8">
+        <h1 className="text-3xl font-bold">Modifier l’événement</h1>
 
-      <FieldBlock label="Titre" field="title" editable={editableFields.title} value={formData.title} onChange={handleChange} toggle={() => toggleField('title')} />
-      <FieldBlock label="Description" field="description" editable={editableFields.description} value={formData.description} onChange={handleChange} toggle={() => toggleField('description')} textarea />
-      <FieldBlock label="Email" field="email" editable={editableFields.email} value={formData.email} onChange={handleChange} toggle={() => toggleField('email')} />
-      <FieldBlock label="Téléphone" field="phone" editable={editableFields.phone} value={formData.phone} onChange={handleChange} toggle={() => toggleField('phone')} />
-      <FieldBlock label="Site web" field="website" editable={editableFields.website} value={formData.website} onChange={handleChange} toggle={() => toggleField('website')} />
+        <FieldBlock label="Titre" field="title" editable={editableFields.title} value={formData.title} onChange={handleChange} toggle={() => toggleField('title')} />
+        <FieldBlock label="Description" field="description" editable={editableFields.description} value={formData.description} onChange={handleChange} toggle={() => toggleField('description')} textarea />
+        <FieldBlock label="Email" field="email" editable={editableFields.email} value={formData.email} onChange={handleChange} toggle={() => toggleField('email')} />
+        <FieldBlock label="Téléphone" field="phone" editable={editableFields.phone} value={formData.phone} onChange={handleChange} toggle={() => toggleField('phone')} />
+        <FieldBlock label="Site web" field="website" editable={editableFields.website} value={formData.website} onChange={handleChange} toggle={() => toggleField('website')} />
 
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <label className="font-semibold">Date & Heure</label>
-          <button onClick={() => toggleField('datetime')}>✏️</button>
-        </div>
-        {editableFields.datetime ? (
-          <div className="flex gap-4">
-            <input type="date" name="eventDate" value={formData.eventDate} onChange={handleChange} className="text-black p-2 rounded" />
-            <input type="time" name="eventTime" value={formData.eventTime} onChange={handleChange} className="text-black p-2 rounded" />
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <label className="font-semibold">Date & Heure</label>
+            <button onClick={() => toggleField('datetime')}>✏️</button>
           </div>
-        ) : (
-          <div className="bg-gray-600/50 p-3 rounded text-white">{originalData.event_datetime}</div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <label className="font-semibold">Adresse</label>
-          <button onClick={() => toggleField('address')}>📍</button>
+          {editableFields.datetime ? (
+            <div className="flex gap-4">
+              <input type="date" name="eventDate" value={formData.eventDate} onChange={handleChange} className="text-black p-2 rounded" />
+              <input type="time" name="eventTime" value={formData.eventTime} onChange={handleChange} className="text-black p-2 rounded" />
+            </div>
+          ) : (
+            <div className="bg-gray-600/50 p-3 rounded text-white">{originalData.event_datetime}</div>
+          )}
         </div>
-        {editableFields.address && (
-          <input name="address" placeholder="Tapez votre adresse" onChange={handleChange} className="text-black w-full p-2 rounded" />
-        )}
-      </div>
 
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <label className="font-semibold">Image</label>
-          <button onClick={() => toggleField('image')}>🖼️</button>
-        </div>
-        {editableFields.image ? (
-          <div className="space-y-2">
-            <input type="file" accept="image/*" onChange={handleImageChange} />
-            {imagePreview && <img src={imagePreview} alt="Prévisualisation" className="rounded max-w-sm" />}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <label className="font-semibold">Adresse</label>
+            <button onClick={() => toggleField('address')}>📍</button>
           </div>
-        ) : (
-          <img src={originalData.image_url || '/placeholder.jpg'} className="rounded max-w-sm" />
-        )}
-      </div>
+          {editableFields.address && (
+            <input name="address" placeholder="Tapez votre adresse" onChange={handleChange} className="text-black w-full p-2 rounded" />
+          )}
+        </div>
 
-      <button onClick={handleSubmit} className="bg-[#C30D9B] text-white py-3 px-6 rounded-full">
-        Enregistrer les modifications
-      </button>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <label className="font-semibold">Image</label>
+            <button onClick={() => toggleField('image')}>🖼️</button>
+          </div>
+          {editableFields.image ? (
+            <div className="space-y-2">
+              <input type="file" accept="image/*" onChange={handleImageChange} />
+              {imagePreview && <img src={imagePreview} alt="Prévisualisation" className="rounded max-w-sm" />}
+            </div>
+          ) : (
+            <img src={originalData.image_url || '/placeholder.jpg'} className="rounded max-w-sm" />
+          )}
+        </div>
+
+        <button onClick={handleSubmit} className="bg-[#C30D9B] text-white py-3 px-6 rounded-full">
+          Enregistrer les modifications
+        </button>
+      </div>
     </div>
   );
 };
