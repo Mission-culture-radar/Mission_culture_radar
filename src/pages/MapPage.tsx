@@ -50,7 +50,10 @@ type Activity = {
   event_datetime: string;
   address: { coordinates: [number, number] } | null;
   image: string;
+  tags?: string[];
 };
+
+
 
 const MapPage: React.FC = () => {
   const userPopupRef = useRef<L.Popup>(null);
@@ -68,23 +71,96 @@ const MapPage: React.FC = () => {
   const mapRef = useRef<L.Map | null>(null); // ✅ typage explicite
   const token = localStorage.getItem('token');
   const supabase = createAuthedSupabaseClient(token || '');
+  const [locationCache, setLocationCache] = useState<Record<number, string>>({});
+  const [locationText, setLocationText] = useState<string>('Adresse géolocalisée');
+
+  const getUserAgent = (): string => {
+    const host = window.location.hostname;
+    if (host.includes('localhost')) return 'CultureRadarDev/0.1 (+http://localhost:5173)';
+    if (host.includes('ias-b3-lyon-g2.site')) return 'CultureRadar/1.0 (+https://ias-b3-lyon-g2.site/)';
+    return 'CultureRadar/1.0 (+https://cultureradar.fr)';
+  };
+
+  const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+    const cacheKey = `geocode:${lat.toFixed(6)}:${lng.toFixed(6)}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+        {
+          headers: { 'User-Agent': getUserAgent() },
+        }
+      );
+      const json = await response.json();
+      const display = json.display_name || 'Adresse non trouvée';
+      const parts = display.split(',').map((s: string) => s.trim());
+      const isFirstPartNumeric = /^\d+/.test(parts[0]);
+      const truncated = parts.slice(0, isFirstPartNumeric ? 2 : 3).join(', ');
+      localStorage.setItem(cacheKey, truncated);
+      return truncated;
+    } catch (error) {
+      console.warn('Erreur de géocodage inversé:', error);
+      return 'Lieu non précisé';
+    }
+  };
+
+
+  const fetchLocationText = async (activity: Activity) => {
+    if (!activity || !activity.address?.coordinates) {
+      console.warn('❌ Invalid activity or missing coordinates:', activity);
+      return;
+    }
+
+    const [lng, lat] = activity.address.coordinates;
+
+    // Already cached?
+    if (locationCache[activity.id]) {
+      setLocationText(locationCache[activity.id]);
+      return;
+    }
+
+    const loc = await reverseGeocode(lat, lng);
+    setLocationCache((prev) => ({ ...prev, [activity.id]: loc }));
+    setLocationText(loc);
+  };
+
+
+
 
   // Géolocalisation + météo
   useEffect(() => {
 
-     const fetchTags = async () => {
-    const { data, error } = await supabase
-      .from('tags')
-      .select('name'); // ou 'label' selon ta table
+    const fetchTags = async () => {
+      const { data, error } = await supabase
+        .from('activities')
+        .select(`
+      activity_tags (
+        tags (
+          name
+        )
+      )
+    `)
+        .eq('status_id', 3);
 
-    if (error) {
-      console.error('Erreur chargement des tags :', error.message);
-    } else {
-      setTags(data.map((tag) => tag.name)); // ou tag.label
-    }
-  };
+      if (error) {
+        console.error('Erreur chargement des tags :', error.message);
+      } else {
+        // Flatten all tag names from all activities
+        const allTagNames = data.flatMap(activity =>
+          activity.activity_tags.map(tagObj => tagObj.tags?.name)
+        );
 
-  fetchTags();
+        // Remove duplicates
+        const uniqueTagNames = [...new Set(allTagNames.filter(Boolean))];
+
+        setTags(uniqueTagNames);
+      }
+    };
+
+
+    fetchTags();
 
     navigator.geolocation.getCurrentPosition((position) => {
       const coords = {
@@ -93,8 +169,8 @@ const MapPage: React.FC = () => {
       };
       setUserLocation(coords);
       setTimeout(() => {
-  userPopupRef.current?.openOn(mapRef.current!);
-}, 100);
+        userPopupRef.current?.openOn(mapRef.current!);
+      }, 100);
 
       // Centre la carte si disponible
       if (mapRef.current) {
@@ -124,7 +200,18 @@ const MapPage: React.FC = () => {
     const fetchActivities = async () => {
       const { data: raw } = await supabase
         .from('activities')
-        .select('id, title, description, event_datetime, address')
+        .select(`
+          id,
+          title,
+          description,
+          event_datetime,
+          address,
+          activity_tags (
+            tags (
+              name
+            )
+          )
+        `)
         .eq('status_id', 3);
 
       const enriched = await Promise.all(
@@ -135,8 +222,12 @@ const MapPage: React.FC = () => {
             .eq('activity_id', activity.id)
             .limit(1);
 
+          const tagNames =
+            activity.activity_tags?.map((tagObj) => tagObj.tags?.name?.toLowerCase()) || [];
+
           return {
-          ...activity,
+            ...activity,
+            tags: tagNames,
             image: blobs?.[0]?.blob_link || '/placeholder.jpg',
           };
         })
@@ -147,6 +238,7 @@ const MapPage: React.FC = () => {
 
     fetchActivities();
   }, [token]);
+
 
   const handleCardClick = (eventId: number) => {
     setFullscreenEvent(fullscreenEvent === eventId ? null : eventId);
@@ -175,134 +267,144 @@ const MapPage: React.FC = () => {
     }
   };
 
-const isBadWeather = (weather: { temp: number; description: string } | null) => {
-  if (!weather) return false;
+  const isBadWeather = (weather: { temp: number; description: string } | null) => {
+    if (!weather) return false;
 
-  const desc = weather.description.toLowerCase();
-  const temp = weather.temp;
+    const desc = weather.description.toLowerCase();
+    const temp = weather.temp;
 
-  const isRainy =
-    desc.includes("pluie") || desc.includes("averses") || desc.includes("brouillard") || desc.includes("orage");
-  const isTooCold = temp < 10;
-  const isTooHot = temp > 30;
+    const isRainy =
+      desc.includes("pluie") || desc.includes("averses") || desc.includes("brouillard") || desc.includes("orage");
+    const isTooCold = temp < 10;
+    const isTooHot = temp > 30;
 
-  return isRainy || isTooCold || isTooHot;
-};
+    return isRainy || isTooCold || isTooHot;
+  };
 
-const isOutdoorEvent = (title: string, description: string) => {
-  const keywords = ["extérieur", "exterieur", "outdoor", "plein air"];
-  const combinedText = `${title} ${description}`.toLowerCase();
+  const isOutdoorEvent = (title: string, description: string) => {
+    const keywords = ["extérieur", "exterieur", "outdoor", "plein air"];
+    const combinedText = `${title} ${description}`.toLowerCase();
 
-  return keywords.some((kw) => combinedText.includes(kw));
-};
+    return keywords.some((kw) => combinedText.includes(kw));
+  };
 
-return (
-  <div className="relative h-screen w-full">
-    {/* Barre de recherche + tags (en ligne, haut gauche, sans fond) */}
- <div className="absolute top-4 left-4 right-4 sm:left-16 z-40 flex flex-wrap items-start gap-3 pr-4">
-  {/* Barre de recherche bien visible */}
-  <input
-    type="text"
-    placeholder="Recherche..."
-    value={searchTerm}
-    onChange={(e) => setSearchTerm(e.target.value)}
-    className="px-4 py-2 rounded-full border border-[#C30D9B] bg-[#EFEFEF] text-black placeholder-black text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-white w-[180px] sm:w-[240px]"
-  />
+  return (
+    <div className="relative h-screen w-full">
+      {/* Barre de recherche + tags (en ligne, haut gauche, sans fond) */}
+      <div className="absolute top-4 left-4 right-4 sm:left-16 z-40 flex flex-wrap items-start gap-3 pr-4">
+        {/* Barre de recherche bien visible */}
+        <input
+          type="text"
+          placeholder="Recherche..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="px-4 py-2 rounded-full border border-[#C30D9B] bg-[#EFEFEF] text-black placeholder-black text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-white w-[180px] sm:w-[240px]"
+        />
 
-{/* Tags colorés + bouton "+" */}
-<div className="flex gap-2 relative z-40">
-  {/* Affiche les 3 premiers tags */}
-  {visibleTags.map((tag) => (
-    <button
-      key={tag}
-      onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-      className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 whitespace-nowrap shadow-md ${
-        selectedTag === tag
-          ? 'bg-white text-[#C30D9B] border border-white'
-          : 'bg-[#230022] text-white border border-[#C30D9B] hover:bg-[#C30D9B] hover:text-white'
-      }`}
-    >
-      #{tag}
-    </button>
-  ))}
+        {/* Tags colorés + bouton "+" */}
+        <div className="flex gap-2 relative z-40">
+          {/* Affiche les 3 premiers tags */}
+          {visibleTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 whitespace-nowrap shadow-md ${selectedTag === tag
+                ? 'bg-white text-[#C30D9B] border border-white'
+                : 'bg-[#230022] text-white border border-[#C30D9B] hover:bg-[#C30D9B] hover:text-white'
+                }`}
+            >
+              #{tag}
+            </button>
+          ))}
 
-  {/* Bouton + avec menu déroulant */}
-  {hiddenTags.length > 0 && (
-    <div className="relative">
-      <button
-        onClick={() => setShowAllTags(!showAllTags)}
-        className="px-3 py-1 rounded-full bg-[#C30D9B] text-white text-sm font-medium shadow-md hover:bg-white hover:text-[#C30D9B] border border-white transition"
+          {/* Bouton + avec menu déroulant */}
+          {hiddenTags.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowAllTags(!showAllTags)}
+                className="px-3 py-1 rounded-full bg-[#C30D9B] text-white text-sm font-medium shadow-md hover:bg-white hover:text-[#C30D9B] border border-white transition"
+              >
+                +
+              </button>
+
+              {/* Menu déroulant tags supplémentaires */}
+              {showAllTags && (
+                <div className="absolute left-0 top-10 bg-[#230022] text-white rounded-xl shadow-xl z-50 p-2 w-48 max-h-60 overflow-y-auto border border-[#561447]">
+                  {hiddenTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        setSelectedTag(selectedTag === tag ? null : tag);
+                        setShowAllTags(false);
+                      }}
+                      className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${selectedTag === tag
+                        ? 'bg-[#C30D9B] text-white'
+                        : 'hover:bg-[#C30D9B] hover:text-white'
+                        }`}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <MapContainer
+        center={[48.8566, 2.3522]}
+        zoom={13}
+        className="h-full w-full z-0"
+        ref={mapRef}
       >
-        +
-      </button>
-
-      {/* Menu déroulant tags supplémentaires */}
-      {showAllTags && (
-  <div className="absolute left-0 top-10 bg-[#230022] text-white rounded-xl shadow-xl z-50 p-2 w-48 max-h-60 overflow-y-auto border border-[#561447]">
-    {hiddenTags.map((tag) => (
-      <button
-        key={tag}
-        onClick={() => {
-          setSelectedTag(selectedTag === tag ? null : tag);
-          setShowAllTags(false);
-        }}
-        className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
-          selectedTag === tag
-            ? 'bg-[#C30D9B] text-white'
-            : 'hover:bg-[#C30D9B] hover:text-white'
-        }`}
-      >
-        #{tag}
-      </button>
-    ))}
-  </div>
-)}
-    </div>
-  )}
-</div>
-</div>
-
-<MapContainer
-  center={[48.8566, 2.3522]}
-  zoom={13}
-  className="h-full w-full z-0"
-  ref={mapRef}
->
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
         {activities
-  .filter((event) => {
-    const matchesTag = selectedTag ? event.title.toLowerCase().includes(selectedTag.toLowerCase()) : true;
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesTag && matchesSearch;
-  })
-  .map((event) =>
-          event.address?.coordinates ? (
-            <Marker
-  key={`s_${event.id}`}
-  position={[event.address.coordinates[1], event.address.coordinates[0]]}
-  icon={
-  isOutdoorEvent(event.title, event.description) && isBadWeather(weather)
-    ? redIcon
-    : greenIcon
-}
-  eventHandlers={{ click: () => setSelectedEvent(event.id) }}
->
-  <Popup>{event.title}</Popup>
-</Marker>
+          .filter((event) => {
+            const matchesTag = selectedTag
+              ? event.tags?.includes(selectedTag.toLowerCase()) ||
+              event.title.toLowerCase().includes(selectedTag.toLowerCase())
+              : true;
 
-          ) : null
-        )}
+            const matchesSearch =
+              event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              event.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+            return matchesTag && matchesSearch;
+          })
+
+          .map((event) =>
+            event.address?.coordinates ? (
+              <Marker
+                key={`s_${event.id}`}
+                position={[event.address.coordinates[1], event.address.coordinates[0]]}
+                icon={
+                  isOutdoorEvent(event.title, event.description) && isBadWeather(weather)
+                    ? redIcon
+                    : greenIcon
+                }
+                eventHandlers={{
+                  click: async () => {
+                    await fetchLocationText(event); // pass whole event
+                    setSelectedEvent(event.id);
+                  }
+                }}
+
+              >
+                <Popup>{event.title}</Popup>
+              </Marker>
+
+            ) : null
+          )}
 
         {userLocation && (
-<Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
-  <Popup ref={userPopupRef} autoClose={false} closeOnClick={false} autoPan={false}>
-    Vous êtes ici
-  </Popup>
-</Marker>
-)}
+          <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
+            <Popup ref={userPopupRef} autoClose={false} closeOnClick={false} autoPan={false}>
+              Vous êtes ici
+            </Popup>
+          </Marker>
+        )}
       </MapContainer>
 
       {weather && (
@@ -317,17 +419,16 @@ return (
       )}
 
       {selectedEvent && (
-       <div
+        <div
           id="overlay"
           className={`fixed inset-0 z-40 ${fullscreenEvent ? 'bg-black/60' : ''} overflow-y-auto`}
           onClick={handleOutsideClick}
         >
           <div
-            className={`absolute ${
-              fullscreenEvent
-                ? 'top-10 left-1/2 transform -translate-x-1/2 w-[90%] h-[80%]'
-                : 'top-[100px] left-4 right-4 max-w-sm mx-auto'
-            } z-50 bg-[#230022] rounded-xl p-4 shadow-xl transition-all duration-300 overflow-hidden`}
+            className={`absolute ${fullscreenEvent
+              ? 'top-10 left-1/2 transform -translate-x-1/2 w-[90%] h-[80%]'
+              : 'top-[100px] left-4 right-4 max-w-sm mx-auto'
+              } z-50 bg-[#230022] rounded-xl p-4 shadow-xl transition-all duration-300 overflow-hidden`}
           >
             {activities
               .filter((e) => e.id === selectedEvent)
@@ -341,7 +442,7 @@ return (
                     </p>
                     <p className="text-sm text-gray-300 mb-2">
                       <Star className="inline w-4 h-4 mr-1" />
-                      Adresse géolocalisée
+                      {locationText}
                     </p>
                     <img
                       src={event.image}
