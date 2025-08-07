@@ -50,7 +50,10 @@ type Activity = {
   event_datetime: string;
   address: { coordinates: [number, number] } | null;
   image: string;
+  tags?: string[];
 };
+
+
 
 const MapPage: React.FC = () => {
   const userPopupRef = useRef<L.Popup>(null);
@@ -68,6 +71,63 @@ const MapPage: React.FC = () => {
   const mapRef = useRef<L.Map | null>(null); // ✅ typage explicite
   const token = localStorage.getItem('token');
   const supabase = createAuthedSupabaseClient(token || '');
+  const [locationCache, setLocationCache] = useState<Record<number, string>>({});
+  const [locationText, setLocationText] = useState<string>('Adresse géolocalisée');
+
+  const getUserAgent = (): string => {
+    const host = window.location.hostname;
+    if (host.includes('localhost')) return 'CultureRadarDev/0.1 (+http://localhost:5173)';
+    if (host.includes('ias-b3-lyon-g2.site')) return 'CultureRadar/1.0 (+https://ias-b3-lyon-g2.site/)';
+    return 'CultureRadar/1.0 (+https://cultureradar.fr)';
+  };
+
+  const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+    const cacheKey = `geocode:${lat.toFixed(6)}:${lng.toFixed(6)}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+        {
+          headers: { 'User-Agent': getUserAgent() },
+        }
+      );
+      const json = await response.json();
+      const display = json.display_name || 'Adresse non trouvée';
+      const parts = display.split(',').map((s: string) => s.trim());
+      const isFirstPartNumeric = /^\d+/.test(parts[0]);
+      const truncated = parts.slice(0, isFirstPartNumeric ? 2 : 3).join(', ');
+      localStorage.setItem(cacheKey, truncated);
+      return truncated;
+    } catch (error) {
+      console.warn('Erreur de géocodage inversé:', error);
+      return 'Lieu non précisé';
+    }
+  };
+
+
+  const fetchLocationText = async (activity: Activity) => {
+    if (!activity || !activity.address?.coordinates) {
+      console.warn('❌ Invalid activity or missing coordinates:', activity);
+      return;
+    }
+
+    const [lng, lat] = activity.address.coordinates;
+
+    // Already cached?
+    if (locationCache[activity.id]) {
+      setLocationText(locationCache[activity.id]);
+      return;
+    }
+
+    const loc = await reverseGeocode(lat, lng);
+    setLocationCache((prev) => ({ ...prev, [activity.id]: loc }));
+    setLocationText(loc);
+  };
+
+
+
 
   // Géolocalisation + météo
   useEffect(() => {
@@ -324,7 +384,13 @@ const MapPage: React.FC = () => {
                     ? redIcon
                     : greenIcon
                 }
-                eventHandlers={{ click: () => setSelectedEvent(event.id) }}
+                eventHandlers={{
+                  click: async () => {
+                    await fetchLocationText(event); // pass whole event
+                    setSelectedEvent(event.id);
+                  }
+                }}
+
               >
                 <Popup>{event.title}</Popup>
               </Marker>
@@ -376,7 +442,7 @@ const MapPage: React.FC = () => {
                     </p>
                     <p className="text-sm text-gray-300 mb-2">
                       <Star className="inline w-4 h-4 mr-1" />
-                      Adresse géolocalisée
+                      {locationText}
                     </p>
                     <img
                       src={event.image}
