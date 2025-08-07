@@ -87,16 +87,23 @@ const ActivityDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#230022] via-[#230022] to-[#561447] text-white">
-      <div className="p-10 max-w-6xl mx-auto space-y-12">
-        {/* 🖼️ Image + Description side-by-side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-          {/* Image */}
-          <div>
-            <img
-              src={activity.image}
-              alt={activity.title}
-              className="rounded-lg w-full h-auto object-cover border border-[#C30D9B]"
-            />
+      <div className="p-10 max-w-6xl mx-auto space-y-10">
+        {/* 🏷️ Title spans full width to avoid column height mismatch */}
+        <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+          {activity.title}
+        </h1>
+
+        {/* 🖼️ Image + Description balanced */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
+          {/* Image column */}
+          <div className="self-stretch">
+            <div className="rounded-lg overflow-hidden border border-[#C30D9B] md:h-[26rem]">
+              <img
+                src={activity.image}
+                alt={activity.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
 
             {/* Tags */}
             {activity.tags && activity.tags.length > 0 && (
@@ -113,33 +120,31 @@ const ActivityDetailPage: React.FC = () => {
             )}
           </div>
 
-          {/* Text */}
-          <div>
-            <h1 className="text-4xl font-bold mb-4">{activity.title}</h1>
-            <div className="text-white/80 text-lg mb-6 mt-[4.5rem] max-h-[23rem] overflow-y-auto p-4 rounded-lg border border-[#C30D9B] bg-white/10 scrollbar-thin scrollbar-thumb-[#C30D9B]/60 scrollbar-track-transparent">
+          {/* Description column (matches image height) */}
+          <div className="self-stretch flex">
+            <div className="text-white/80 text-lg w-full md:h-[26rem] overflow-y-auto p-4 rounded-lg border border-[#C30D9B] bg-white/10 scrollbar-thin scrollbar-thumb-[#C30D9B]/60 scrollbar-track-transparent">
               {activity.description}
-            </div>
-
-            <div className="flex gap-8 text-xl">
-              <div>
-                <p className="text-[#C30D9B] font-bold text-2xl">{participantCount}</p>
-                <p className="text-white">participants</p>
-              </div>
-              <div>
-                <p className="text-purple-400 font-bold text-2xl">696</p>
-                <p className="text-white">
-                  clicks depuis le début<br />de la dernière campagne
-                </p>
-              </div>
             </div>
           </div>
         </div>
 
+        {/* 📊 Stats */}
+        <div className="flex gap-8 text-xl">
+          <div>
+            <p className="text-[#C30D9B] font-bold text-2xl">{participantCount}</p>
+            <p className="text-white">Participants</p>
+          </div>
+          <div>
+            <p className="text-purple-300 font-bold text-2xl">{likeCount}</p>
+            <p className="text-white">Likes</p>
+          </div>
+        </div>
+
         {/* 🚀 Action Buttons */}
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-start">
           <button
             className="bg-gradient-to-r from-[#C30D9B] to-[#E60073] text-white py-3 px-6 rounded-full w-full md:w-auto"
-            onClick={() => alert("🔜 Amplification à venir")}
+            onClick={() => alert('🔜 Amplification à venir')}
           >
             J’amplifie ma campagne de publicité
           </button>
