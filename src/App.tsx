@@ -12,6 +12,7 @@ import BecomeCreatorPage from './pages/become-creator';
 import WarningPage from './pages/warning';
 import ActivityDetailPage from './pages/ActivityDetailPage';
 import ActivityEditPage from './pages/ActivityEditPage';
+import NotFoundPage from './pages/404';
 
 function App() {
   return (
@@ -27,9 +28,13 @@ function App() {
           <Route path="/premium" element={<PremiumPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-           <Route path="/sorties" element={<Sorties/>} />
-           <Route path="/become-creator" element={<BecomeCreatorPage/>} />
-           <Route path="/warning" element={<WarningPage/>} />
+          <Route path="/sorties" element={<Sorties/>} />
+          <Route path="/become-creator" element={<BecomeCreatorPage/>} />
+          <Route path="/warning" element={<WarningPage/>} />
+
+
+          {/* !!! 404 Route - Doit être en bas !!!! */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Layout>
     </Router>
