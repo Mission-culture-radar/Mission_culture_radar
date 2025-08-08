@@ -22,11 +22,17 @@ const Sorties: React.FC = () => {
   const [savedEvents, setSavedEvents] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [showComments, setShowComments] = useState(false);
+  const [loading, setLoading] = useState(true); // ✅ new loading flag
 
   useEffect(() => {
     const fetchUserActivities = async () => {
+      setLoading(true); // start loading
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        setSavedEvents([]);
+        setLoading(false);
+        return;
+      }
 
       const decoded = jwtDecode<JwtPayload>(token);
       const userId = decoded.user_id;
@@ -40,12 +46,15 @@ const Sorties: React.FC = () => {
 
       if (linkError) {
         console.error('Erreur récupération user_activities :', linkError);
+        setSavedEvents([]);
+        setLoading(false);
         return;
       }
 
       const activityIds = (userLinks || []).map((link) => link.activity_id);
       if (activityIds.length === 0) {
         setSavedEvents([]);
+        setLoading(false);
         return;
       }
 
@@ -57,11 +66,13 @@ const Sorties: React.FC = () => {
 
       if (activityError) {
         console.error('Erreur récupération activités :', activityError);
+        setSavedEvents([]);
+        setLoading(false);
         return;
       }
 
       const enriched = await Promise.all(
-        (rawActivities as ActivityRow[] | null || []).map(async (activity) => {
+        ((rawActivities as ActivityRow[]) || []).map(async (activity) => {
           const { data: blobs } = await supabase
             .from('activity_blobs')
             .select('blob_link')
@@ -94,6 +105,7 @@ const Sorties: React.FC = () => {
       );
 
       setSavedEvents(enriched);
+      setLoading(false); // finished loading
     };
 
     fetchUserActivities();
@@ -130,8 +142,11 @@ const Sorties: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#230022] via-[#230022] to-[#561447] text-white py-10 px-4 sm:px-6 lg:px-8">
       <h1 className="text-4xl font-bold text-center mb-12">Mes sorties préférées</h1>
+
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {savedEvents.length > 0 ? (
+        {loading ? (
+          <p className="text-white/70 col-span-full text-center">Chargement des sorties...</p>
+        ) : savedEvents.length > 0 ? (
           savedEvents.map((event) => (
             <div
               key={event.id}
@@ -243,7 +258,10 @@ const LikeButton = ({ activityId }: { activityId: number }) => {
   useEffect(() => {
     const fetchLike = async () => {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
       const { user_id } = jwtDecode<JwtPayload>(token);
       const supabase = createAuthedSupabaseClient(token);
