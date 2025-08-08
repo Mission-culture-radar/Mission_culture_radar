@@ -49,12 +49,59 @@ async function uploadActivityMedia({
   return data.uploaded;
 }
 
+async function moderateActivity(
+  activityId: number,
+  jwt: string
+): Promise<{
+  success: boolean;
+  new_status_id?: number;
+  verdict?: string;
+  justification?: string;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-activity`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ activity_id: activityId }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: data.error || "Erreur inattendue",
+      };
+    }
+
+    return {
+      success: true,
+      new_status_id: data.new_status_id,
+      verdict: data.verdict,
+      justification: data.justification,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || "Erreur réseau ou serveur",
+    };
+  }
+}
+
 const CreateEventPage: React.FC = () => {
   const [supabase, setSupabase] = useState<any>(null);
   const [userId, setUserId] = useState<number | null>(null);
   const [roleId, setRoleId] = useState<number | null>(null);
   const [authorized, setAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [submitting, setSubmitting] = useState(false);         // 👈 throbber state
+  const [phase, setPhase] = useState<string>('');              // 👈 small status text for overlay (optional)
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -71,6 +118,8 @@ const CreateEventPage: React.FC = () => {
   const [newTag, setNewTag] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -124,6 +173,7 @@ const CreateEventPage: React.FC = () => {
   const uploadFiles = async (activityId: number, jwt: string) => {
     if (!uploadedFiles.length) return;
     try {
+      setPhase('Téléversement des images…');
       const urls = await uploadActivityMedia({ jwt, activityId, files: uploadedFiles });
       console.log("✅ Images uploadées :", urls);
     } catch (err) {
@@ -132,51 +182,6 @@ const CreateEventPage: React.FC = () => {
     }
   };
 
-
-  async function moderateActivity(
-    activityId: number,
-    jwt: string
-  ): Promise<{
-    success: boolean;
-    new_status_id?: number;
-    verdict?: string;
-    justification?: string;
-    error?: string;
-  }> {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-activity`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ activity_id: activityId }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        return {
-          success: false,
-          error: data.error || "Erreur inattendue",
-        };
-      }
-
-      return {
-        success: true,
-        new_status_id: data.new_status_id,
-        verdict: data.verdict,
-        justification: data.justification,
-      };
-    } catch (err: any) {
-      return {
-        success: false,
-        error: err.message || "Erreur réseau ou serveur",
-      };
-    }
-  }
-  
-  const navigate = useNavigate();
   const handleSubmit = async () => {
     if (!authorized || !userId || !supabase) {
       alert("❌ Vous n’avez pas la permission de créer un événement.");
@@ -184,7 +189,11 @@ const CreateEventPage: React.FC = () => {
     }
 
     const token = localStorage.getItem('token')!;
+    setSubmitting(true);
+    setPhase('Création de l’événement…');
+
     try {
+      // 1) Créer l'activité minimaliste
       const { data: activity, error: insertError } = await supabase
         .from('activities')
         .insert([{ creator_id: userId, title: 'Untitled Event' }])
@@ -195,10 +204,12 @@ const CreateEventPage: React.FC = () => {
 
       const activityId = activity.id;
 
+      // 2) Construire datetime + géocoder
       const datetime = formData.eventDate && formData.eventTime
         ? `${formData.eventDate} ${formData.eventTime}`
         : null;
 
+      setPhase('Géocodage de l’adresse…');
       const fullAddress = `${formData.address}, ${formData.postalCode} ${formData.city}`;
       const geo = await geocodeAddress(fullAddress);
       if (!geo) {
@@ -206,6 +217,8 @@ const CreateEventPage: React.FC = () => {
         return;
       }
 
+      // 3) RPC d’update complet
+      setPhase('Enregistrement des informations…');
       const { error: rpcError } = await supabase.rpc('submit_activity_full', {
         _activity_id: activityId,
         _title: formData.title,
@@ -217,13 +230,16 @@ const CreateEventPage: React.FC = () => {
         _phone: formData.phone,
         _website: formData.website
       });
-
       if (rpcError) throw rpcError;
 
+      // 4) Upload des fichiers (Edge Function)
       await uploadFiles(activityId, token);
 
+      // 5) Modération (Edge Function)
+      setPhase('Vérification automatique (modération)…');
       const moderation = await moderateActivity(activityId, token);
 
+      // 6) Feedback + redirection
       if (moderation.success) {
         const verdict = moderation.verdict?.toLowerCase();
         if (verdict === "yes") {
@@ -239,18 +255,18 @@ const CreateEventPage: React.FC = () => {
           alert("⚠️ Résultat de modération inattendu. Un modérateur vérifiera manuellement.");
           navigate("/creator");
         }
-
       } else {
         alert("✅ Événement créé, mais la modération automatique a échoué. Il sera vérifié manuellement.");
         navigate("/creator");
       }
-
     } catch (err) {
       console.error(err);
       alert('❌ Une erreur est survenue lors de la création.');
+    } finally {
+      setSubmitting(false);
+      setPhase('');
     }
   };
-
 
   if (isLoading) {
     return (
@@ -265,47 +281,129 @@ const CreateEventPage: React.FC = () => {
       <div className="max-w-4xl mx-auto bg-white/10 border border-white/20 rounded-2xl p-8 shadow-xl space-y-8">
         <h2 className="text-3xl font-bold text-center">Créer un événement</h2>
 
-        <input type="text" name="title" placeholder="Titre *" value={formData.title} onChange={handleInputChange}
-          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm placeholder-gray-600" />
-        <textarea name="description" placeholder="Description *" value={formData.description} onChange={handleInputChange}
-          className="w-full px-6 py-4 bg-white text-gray-800 rounded-2xl text-sm placeholder-gray-600 resize-none" rows={4} />
+        <input
+          type="text"
+          name="title"
+          placeholder="Titre *"
+          value={formData.title}
+          onChange={handleInputChange}
+          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm placeholder-gray-600"
+        />
+
+        <textarea
+          name="description"
+          placeholder="Description *"
+          value={formData.description}
+          onChange={handleInputChange}
+          className="w-full px-6 py-4 bg-white text-gray-800 rounded-2xl text-sm placeholder-gray-600 resize-none"
+          rows={4}
+        />
+
         <div className="grid grid-cols-2 gap-4">
-          <input type="date" name="eventDate" value={formData.eventDate} onChange={handleInputChange}
-            className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
-          <input type="time" name="eventTime" value={formData.eventTime} onChange={handleInputChange}
-            className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
+          <input
+            type="date"
+            name="eventDate"
+            value={formData.eventDate}
+            onChange={handleInputChange}
+            className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm"
+          />
+          <input
+            type="time"
+            name="eventTime"
+            value={formData.eventTime}
+            onChange={handleInputChange}
+            className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm"
+          />
         </div>
-        <input type="email" name="email" placeholder="Email *" value={formData.email} onChange={handleInputChange}
-          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
-        <input type="tel" name="phone" placeholder="Téléphone" value={formData.phone} onChange={handleInputChange}
-          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
+
+        <input
+          type="email"
+          name="email"
+          placeholder="Email *"
+          value={formData.email}
+          onChange={handleInputChange}
+          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm"
+        />
+
+        <input
+          type="tel"
+          name="phone"
+          placeholder="Téléphone"
+          value={formData.phone}
+          onChange={handleInputChange}
+          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm"
+        />
+
         <div className="grid grid-cols-2 gap-4">
-          <input type="text" name="address" placeholder="Adresse" value={formData.address} onChange={handleInputChange}
-            className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
-          <input type="text" name="city" placeholder="Ville" value={formData.city} onChange={handleInputChange}
-            className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
+          <input
+            type="text"
+            name="address"
+            placeholder="Adresse"
+            value={formData.address}
+            onChange={handleInputChange}
+            className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm"
+          />
+          <input
+            type="text"
+            name="city"
+            placeholder="Ville"
+            value={formData.city}
+            onChange={handleInputChange}
+            className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm"
+          />
         </div>
-        <input type="text" name="postalCode" placeholder="Code postal" value={formData.postalCode} onChange={handleInputChange}
-          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
-        <input type="url" name="website" placeholder="Site Web" value={formData.website} onChange={handleInputChange}
-          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm" />
+
+        <input
+          type="text"
+          name="postalCode"
+          placeholder="Code postal"
+          value={formData.postalCode}
+          onChange={handleInputChange}
+          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm"
+        />
+
+        <input
+          type="url"
+          name="website"
+          placeholder="Site Web"
+          value={formData.website}
+          onChange={handleInputChange}
+          className="w-full px-6 py-4 bg-white text-gray-800 rounded-full text-sm"
+        />
 
         {/* Tags */}
         <div>
           <div className="flex flex-wrap gap-2 mb-2">
             {formData.tags.map((tag, index) => (
-              <span key={index} className="inline-flex items-center px-3 py-1 bg-white border border-gray-300 text-gray-800 text-sm rounded-full">
+              <span
+                key={index}
+                className="inline-flex items-center px-3 py-1 bg-white border border-gray-300 text-gray-800 text-sm rounded-full"
+              >
                 {tag}
-                <button type="button" onClick={() => removeTag(tag)} className="ml-2 text-gray-600 hover:text-gray-800">×</button>
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  className="ml-2 text-gray-600 hover:text-gray-800"
+                >
+                  ×
+                </button>
               </span>
             ))}
           </div>
           <div className="flex gap-2">
-            <input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)}
+            <input
+              type="text"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-              className="flex-1 px-6 py-4 bg-white text-gray-800 rounded-full text-sm" placeholder="Ajouter un tag..." />
-            <button type="button" onClick={addTag}
-              className="w-12 h-12 bg-white text-gray-800 hover:bg-gray-200 rounded-full flex items-center justify-center">
+              className="flex-1 px-6 py-4 bg-white text-gray-800 rounded-full text-sm"
+              placeholder="Ajouter un tag..."
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              className="w-12 h-12 bg-white text-gray-800 hover:bg-gray-200 rounded-full flex items-center justify-center"
+            >
               <Plus className="h-5 w-5" />
             </button>
           </div>
@@ -328,11 +426,43 @@ const CreateEventPage: React.FC = () => {
         </div>
 
         {/* Soumettre */}
-        <button onClick={handleSubmit}
-          className="w-full bg-[#C30D9B] hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-full transition-all">
-          Soumettre
+        <button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className={`w-full bg-[#C30D9B] hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-full transition-all
+          ${submitting ? 'opacity-70 cursor-not-allowed hover:bg-[#C30D9B]' : ''}`}
+        >
+          {submitting ? (
+            <span className="inline-flex items-center gap-2">
+              <span
+                className="h-5 w-5 inline-block rounded-full border-4 border-white/30 border-t-white animate-spin"
+                aria-hidden="true"
+              />
+              Traitement en cours…
+            </span>
+          ) : (
+            'Soumettre'
+          )}
         </button>
       </div>
+
+      {/* ✅ Full-screen overlay while submitting */}
+      {submitting && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center"
+          aria-live="assertive"
+          aria-busy="true"
+        >
+          <div className="flex flex-col items-center gap-4 bg-white/10 border border-white/20 rounded-2xl p-6 text-white">
+            <span
+              className="h-10 w-10 rounded-full border-4 border-white/30 border-t-white animate-spin"
+              aria-hidden="true"
+            />
+            <p className="text-sm">{phase || 'Traitement en cours…'}</p>
+            <p className="text-xs opacity-80">Veuillez patienter, cela peut prendre quelques secondes ⏳</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
