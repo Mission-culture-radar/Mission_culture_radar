@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Calendar, MapPin, Users } from 'lucide-react';
 import { createAuthedSupabaseClient } from '../lib/authedClient';
 import { fetchLocationText } from '../lib/geolocationUtils';
+import { useNavigate } from 'react-router-dom'; // add this
 
 type FeaturedCard = {
   id: number;
@@ -56,6 +57,10 @@ const locCache = new Map<number, string>();
 const HomePage: React.FC = () => {
   const [featuredEvents, setFeaturedEvents] = useState<FeaturedCard[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate(); // add this
+
+  const token = localStorage.getItem('token');                // add this
+  const supabase = createAuthedSupabaseClient(token || '');   // add this
 
   // Debug
   const [debugInfo, setDebugInfo] = useState<any>({});
@@ -250,6 +255,29 @@ const HomePage: React.FC = () => {
     fetchFeatured();
   }, [locationSearch]);
 
+  const handleJeSors = async (activityId: number) => {
+    // If user not logged in, send them to signup/login
+    if (!token) {
+      navigate('/login?signup=true');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('user_activities')
+      .upsert({
+        activity_id: activityId,
+        user_participates: true,
+      });
+
+    if (error) {
+      console.error('❌ Erreur Supabase user_activities:', error.message);
+      alert("Une erreur est survenue.");
+    } else {
+      alert("✅ Sortie ajoutée à votre profil !");
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#230022] via-[#230022] to-[#561447] text-white">
       {/* Hero */}
@@ -321,7 +349,13 @@ const HomePage: React.FC = () => {
                       <Users className="h-4 w-4" />
                       <span>{event.participants} participants</span>
                     </div>
-                    <button className="bg-[#c30d9b] text-white text-xs px-4 py-2 rounded-full hover:bg-[#e52d52] transition">Je sors !</button>
+                    <button
+                      onClick={() => handleJeSors(event.id)}
+                      className="bg-[#c30d9b] text-white text-xs px-4 py-2 rounded-full hover:bg-[#e52d52] transition"
+                    >
+                      Je sors !
+                    </button>
+
                   </div>
                 </div>
               </div>
