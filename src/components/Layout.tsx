@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, User } from 'lucide-react';
 import { jwtDecode } from 'jwt-decode';
 import ReactGA from 'react-ga4';
-
 const GA_ID = 'G-BL32PKV7LK';
 
 interface LayoutProps {
@@ -141,11 +140,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`px-3 py-2 text-base font-medium transition-colors ${
-                    isActive(item.href)
-                      ? 'text-primary-400 border-b-2 border-primary-400'
-                      : 'text-gray-300 hover:text-primary-300'
-                  }`}
+                  className={`px-3 py-2 text-base font-medium transition-colors ${isActive(item.href)
+                    ? 'text-primary-400 border-b-2 border-primary-400'
+                    : 'text-gray-300 hover:text-primary-300'
+                    }`}
                 >
                   {item.name}
                 </Link>
@@ -187,11 +185,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`block px-3 py-2 text-base font-medium transition-colors ${
-                    isActive(item.href)
-                      ? 'text-primary-400 bg-dark-800/50'
-                      : 'text-gray-300 hover:text-primary-300 hover:bg-dark-800/30'
-                  }`}
+                  className={`block px-3 py-2 text-base font-medium transition-colors ${isActive(item.href)
+                    ? 'text-primary-400 bg-dark-800/50'
+                    : 'text-gray-300 hover:text-primary-300 hover:bg-dark-800/30'
+                    }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
@@ -222,7 +219,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       <footer className="bg-[#230022] border-t-[1px] border-[#561447] mt-auto text-xs py-2">
         <div className="text-center text-white/70">
-          <p>&copy; 2025 Culture Radar. Projet Etudiant.</p>
+          <p>
+            &copy; 2025 Culture Radar. Projet Étudiant. |
+            <Link to="/mentions-legales" className="text-purple-400 hover:underline"> Mentions légales</Link> |
+            <Link to="/cgu-cgv" className="text-purple-400 hover:underline"> CGU/CGV</Link> |
+            <Link to="/politique-confidentialite" className="text-purple-400 hover:underline"> Politique de confidentialité</Link>
+          </p>
+
+
         </div>
       </footer>
     </div>

@@ -12,6 +12,10 @@ import BecomeCreatorPage from './pages/become-creator';
 import WarningPage from './pages/warning';
 import ActivityDetailPage from './pages/ActivityDetailPage';
 import ActivityEditPage from './pages/ActivityEditPage';
+import NotFoundPage from './pages/404';
+import MentionsLegalesPage from './pages/MentionsLegalesPage';
+import CguCgvPage from './pages/CguCgvPage.tsx';
+import PolitiqueConfidentialitePage from './pages/PolitiqueConfidentialitePage'
 
 function App() {
   return (
@@ -27,9 +31,16 @@ function App() {
           <Route path="/premium" element={<PremiumPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-           <Route path="/sorties" element={<Sorties/>} />
-           <Route path="/become-creator" element={<BecomeCreatorPage/>} />
-           <Route path="/warning" element={<WarningPage/>} />
+          <Route path="/sorties" element={<Sorties/>} />
+          <Route path="/become-creator" element={<BecomeCreatorPage/>} />
+          <Route path="/warning" element={<WarningPage/>} />
+          <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
+          <Route path="/cgu-cgv" element={<CguCgvPage/>} />
+          <Route path="/politique-confidentialite" element={<PolitiqueConfidentialitePage/>} />
+
+
+          {/* !!! 404 Route - Doit être en bas !!!! */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Layout>
     </Router>
