@@ -25,7 +25,7 @@ const PremiumPage: React.FC = () => {
             Essayez pendant 1 mois pour 0€.
           </p>
           <p className="text-lg mb-2">
-            Seulement x€ par mois ensuite.
+            Seulement 10€ par mois ensuite.
           </p>
           <p className="text-lg mb-8">
             Annulable à tout moment.

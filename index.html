@@ -6,12 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Culture Radar - Révélateur d'événements culturels</title>
     <meta name="description" content="Découvrez les meilleurs événements culturels près de chez vous avec Culture Radar. Concerts, spectacles, expositions et plus encore." />
+
+    <!-- Google Tag Manager -->
+    <script>
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer','GTM-WVPVN3B6');
+    </script>
+    <!-- End Google Tag Manager -->
   </head>
   <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript>
+      <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WVPVN3B6"
+      height="0" width="0" style="display:none;visibility:hidden"></iframe>
+    </noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Klaro Configuration (inline) -->
+    <!-- Klaro Configuration -->
     <script>
       var klaroConfig = {
         version: 1,
@@ -34,7 +51,6 @@
         noticeAsModal: false,
         
         translations: {
-          // French translations for your site
           fr: {
             privacyPolicyUrl: '/confidentialite',
             consentModal: {
@@ -83,12 +99,9 @@
               '_gat',
             ],
           },
-          // Add more services as needed for your site
         ],
       };
     </script>
-    <!-- Klaro Library -->
     <script defer src="https://cdn.kiprotect.com/klaro/v0.7.21/klaro.js"></script>
-
   </body>
 </html>
