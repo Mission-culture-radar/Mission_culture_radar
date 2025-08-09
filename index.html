@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Culture Radar - Révélateur d'événements culturels</title>
+    <meta name="description" content="Découvrez les meilleurs événements culturels près de chez vous avec Culture Radar. Concerts, spectacles, expositions et plus encore." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Klaro Configuration (inline) -->
+    <script>
+      var klaroConfig = {
+        version: 1,
+        elementID: 'klaro',
+        styling: {
+          theme: ['light', 'top', 'wide'],
+        },
+        noAutoLoad: false,
+        htmlTexts: true,
+        embedded: false,
+        groupByPurpose: true,
+        storageMethod: 'cookie',
+        cookieName: 'klaro',
+        cookieExpiresAfterDays: 365,
+        default: false,
+        mustConsent: false,
+        acceptAll: true,
+        hideDeclineAll: false,
+        hideLearnMore: false,
+        noticeAsModal: false,
+        
+        translations: {
+          // French translations for your site
+          fr: {
+            privacyPolicyUrl: '/confidentialite',
+            consentModal: {
+              title: 'Gestion des cookies',
+              description: 'Nous utilisons des cookies pour améliorer votre expérience sur Culture Radar. Vous pouvez choisir quels cookies accepter.',
+            },
+            consentNotice: {
+              description: 'Ce site utilise des cookies pour améliorer votre expérience. {learnMore}',
+              learnMore: 'En savoir plus',
+            },
+            purposes: {
+              analytics: 'Statistiques',
+              security: 'Sécurité',
+              advertising: 'Publicité',
+              functionality: 'Fonctionnalité',
+            },
+          },
+          en: {
+            privacyPolicyUrl: '/privacy',
+            purposes: {
+              analytics: 'Analytics',
+              security: 'Security', 
+              advertising: 'Advertising',
+              functionality: 'Functionality',
+            },
+          },
+        },
+
+        services: [
+          {
+            name: 'essential',
+            title: 'Cookies essentiels',
+            purposes: ['functionality'],
+            required: true,
+            default: true,
+          },
+          {
+            name: 'analytics',
+            title: 'Google Analytics',
+            purposes: ['analytics'],
+            default: false,
+            cookies: [
+              '_ga',
+              '_ga_*',
+              '_gid',
+              '_gat',
+            ],
+          },
+          // Add more services as needed for your site
+        ],
+      };
+    </script>
+    <!-- Klaro Library -->
+    <script defer src="https://cdn.kiprotect.com/klaro/v0.7.21/klaro.js"></script>
+
+  </body>
+</html>
