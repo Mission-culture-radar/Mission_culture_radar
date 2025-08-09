@@ -274,61 +274,73 @@ const MapPage: React.FC = () => {
   return (
     <div className="relative h-screen w-full">
       {/* Barre de recherche + tags */}
-      <div className="absolute top-4 left-4 right-4 sm:left-16 z-40 flex flex-wrap items-start gap-3 pr-4">
-        <input
-          type="text"
-          placeholder="Recherche..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="px-4 py-2 rounded-full border border-[#C30D9B] bg-[#EFEFEF] text-black placeholder-black text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-white w-[180px] sm:w-[240px]"
-        />
+      <div className="absolute inset-x-4 top-4 sm:left-16 sm:right-4 z-40">
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex-1 min-w-0 flex flex-wrap items-start gap-3 pr-0 sm:pr-4">
+      <input
+        type="text"
+        placeholder="Recherche..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="px-4 py-2 rounded-full border border-[#C30D9B] bg-[#EFEFEF] text-black placeholder-black text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-white w-full sm:w-[240px]"
+      />
 
-        <div className="flex gap-2 relative z-40">
-          {visibleTags.map((tag) => (
+      <div className="flex gap-2 relative z-40">
+        {/* <- laisse ton map des visibleTags + le bouton + et le menu déroulant exactement comme tu les as */}
+        {visibleTags.map((tag) => (
+          <button
+            key={tag}
+            onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+            className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 whitespace-nowrap shadow-md ${
+              selectedTag === tag
+                ? 'bg-white text-[#C30D9B] border border-white'
+                : 'bg-[#230022] text-white border border-[#C30D9B] hover:bg-[#C30D9B] hover:text-white'
+            }`}
+          >
+            #{tag}
+          </button>
+        ))}
+
+        {hiddenTags.length > 0 && (
+          <div className="relative">
             <button
-              key={tag}
-              onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 whitespace-nowrap shadow-md ${
-                selectedTag === tag
-                  ? 'bg-white text-[#C30D9B] border border-white'
-                  : 'bg-[#230022] text-white border border-[#C30D9B] hover:bg-[#C30D9B] hover:text-white'
-              }`}
+              onClick={() => setShowAllTags(!showAllTags)}
+              className="px-3 py-1 rounded-full bg-[#C30D9B] text-white text-sm font-medium shadow-md hover:bg-white hover:text-[#C30D9B] border border-white transition"
             >
-              #{tag}
+              +
             </button>
-          ))}
 
-          {hiddenTags.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => setShowAllTags(!showAllTags)}
-                className="px-3 py-1 rounded-full bg-[#C30D9B] text-white text-sm font-medium shadow-md hover:bg-white hover:text-[#C30D9B] border border-white transition"
-              >
-                +
-              </button>
-
-              {showAllTags && (
-                <div className="absolute left-0 top-10 bg-[#230022] text-white rounded-xl shadow-xl z-50 p-2 w-48 max-h-60 overflow-y-auto border border-[#561447]">
-                  {hiddenTags.map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => {
-                        setSelectedTag(selectedTag === tag ? null : tag);
-                        setShowAllTags(false);
-                      }}
-                      className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
-                        selectedTag === tag ? 'bg-[#C30D9B] text-white' : 'hover:bg-[#C30D9B] hover:text-white'
-                      }`}
-                    >
-                      #{tag}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+            {showAllTags && (
+              <div className="absolute left-0 top-10 bg-[#230022] text-white rounded-xl shadow-xl z-50 p-2 w-48 max-h-60 overflow-y-auto border border-[#561447]">
+                {hiddenTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => { setSelectedTag(selectedTag === tag ? null : tag); setShowAllTags(false); }}
+                    className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
+                      selectedTag === tag ? 'bg-[#C30D9B] text-white' : 'hover:bg-[#C30D9B] hover:text-white'
+                    }`}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+    </div>
+    {weather && (
+  <div className="bg-[#230022] rounded-xl shadow-lg px-4 py-3 w-full sm:w-60">
+    <div className="flex items-center justify-between mb-2">
+      <h3 className="text-sm font-semibold text-white">Météo actuelle</h3>
+      <CloudSun className="text-yellow-300" />
+    </div>
+    <p className="text-3xl font-bold text-white">{weather.temp}°C</p>
+    <p className="text-sm text-gray-200">{weather.description}</p>
+  </div>
+)}
+  </div>
+</div>
 
       <MapContainer center={[48.8566, 2.3522]} zoom={13} className="h-full w-full z-0" ref={mapRef}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -377,17 +389,6 @@ const MapPage: React.FC = () => {
           </Marker>
         )}
       </MapContainer>
-
-      {weather && (
-        <div className="absolute top-4 right-4 z-30 bg-[#230022] rounded-xl shadow-lg px-4 py-3 w-52 sm:w-60">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-white">Météo actuelle</h3>
-            <CloudSun className="text-yellow-300" />
-          </div>
-          <p className="text-3xl font-bold text-white">{weather.temp}°C</p>
-          <p className="text-sm text-gray-200">{weather.description}</p>
-        </div>
-      )}
 
       {selectedEvent && (
         <div
