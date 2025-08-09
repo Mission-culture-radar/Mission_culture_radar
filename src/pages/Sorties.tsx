@@ -200,10 +200,12 @@ const Sorties: React.FC = () => {
         <div
           className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedEvent(null)}
+          onTouchStart={() => setSelectedEvent(null)}
         >
           <div
-            className="bg-[#2e0033] rounded-2xl p-6 max-w-3xl w-full relative overflow-hidden"
+            className="bg-[#2e0033] rounded-2xl p-6 w-[calc(100%-2rem)] max-w-lg sm:max-w-3xl max-h-[85vh] relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
             <button
               className="absolute top-4 right-4 text-white hover:text-[#e52d52]"
@@ -244,6 +246,14 @@ const Sorties: React.FC = () => {
                 <p>😍 Trop hâte !</p>
               </div>
             )}
+
+                        {/* Bouton Fermer — mobile only */}
+            <button
+              className="sm:hidden mt-4 w-full bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl"
+              onClick={() => setSelectedEvent(null)}
+            >
+              Fermer
+            </button>
           </div>
         </div>
       )}
